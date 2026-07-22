@@ -15,7 +15,7 @@ export default function Home() {
     <main>
       <nav className="topbar shell">
         <a className="brand" href="#inicio"><Crest small /><span>ALDAPAN<br /><i>GORA</i></span></a>
-        <div className="navlinks"><a href="#equipo">El equipo</a><a href="#partidos">Partidos</a><a href="#noticias">Noticias</a><a href="#estadisticas">Estadísticas</a></div>
+        <div className="navlinks"><a href="#equipo">El equipo</a><a href="#partidos">Partidos</a><a href="#noticias">Noticias</a><a href="#estadisticas">Estadísticas</a><a href="/alineaciones">Alineaciones</a></div>
         <a className="menu-button" href="#partidos">Ver calendario <span>↗</span></a>
       </nav>
 
