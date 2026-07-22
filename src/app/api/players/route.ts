@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDatabase } from "@/lib/db";
 import { ADMIN_PROFILE } from "@/lib/team";
+import { isAdminRequest } from "@/lib/auth";
 
 export async function GET() {
   const database = await getDatabase();
@@ -9,7 +10,7 @@ export async function GET() {
 }
 
 export async function PUT(request: NextRequest) {
-  if (request.headers.get("x-admin-email") !== ADMIN_PROFILE.email) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+  if (!(await isAdminRequest())) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   const body = await request.json();
   if (!body.id || !body.name) return NextResponse.json({ error: "Faltan datos" }, { status: 400 });
   const database = await getDatabase();
