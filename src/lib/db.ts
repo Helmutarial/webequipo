@@ -4,6 +4,7 @@ import sqlite3 from "sqlite3";
 import { open, Database } from "sqlite";
 import { initialPlayers } from "@/lib/team";
 import { initialNews } from "@/lib/news";
+import { initialMatches } from "@/lib/matches";
 
 let databasePromise: Promise<Database> | undefined;
 
@@ -32,5 +33,9 @@ async function initializeDatabase() {
   const newsStatement = await database.prepare("INSERT OR IGNORE INTO news (id,title,slug,excerpt,content,tag,date,image,accent,published,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,datetime('now'))");
   for (const item of initialNews) await newsStatement.run(item.id, item.title, item.slug, item.excerpt, item.content, item.tag, item.date, item.image, item.accent, item.published ? 1 : 0);
   await newsStatement.finalize();
+  await database.exec(`CREATE TABLE IF NOT EXISTS matches (id TEXT PRIMARY KEY, opponent TEXT NOT NULL, opponentShort TEXT NOT NULL, date TEXT NOT NULL, competition TEXT NOT NULL, venue TEXT NOT NULL, status TEXT NOT NULL, homeScore INTEGER, awayScore INTEGER, starters TEXT NOT NULL, substitutes TEXT NOT NULL, events TEXT NOT NULL, updated_at TEXT NOT NULL)`);
+  const matchStatement = await database.prepare("INSERT OR IGNORE INTO matches (id,opponent,opponentShort,date,competition,venue,status,homeScore,awayScore,starters,substitutes,events,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))");
+  for (const match of initialMatches) await matchStatement.run(match.id, match.opponent, match.opponentShort, match.date, match.competition, match.venue, match.status, match.homeScore, match.awayScore, JSON.stringify(match.starters), JSON.stringify(match.substitutes), JSON.stringify(match.events));
+  await matchStatement.finalize();
   return database;
 }
