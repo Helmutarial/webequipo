@@ -19,5 +19,8 @@ async function initializeDatabase() {
   const statement = await database.prepare("INSERT OR IGNORE INTO players (id,name,alias,number,position,photo,goals,assists,appearances,bio,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,datetime('now'))");
   for (const player of initialPlayers) await statement.run(player.id, player.name, player.alias, player.number, player.position, player.photo, player.goals, player.assists, player.appearances, player.bio);
   await statement.finalize();
+  await database.run("UPDATE players SET name='Jare', alias='Jare' WHERE id='caspilla'");
+  await database.run("UPDATE players SET name='Sergio', alias='Sergio' WHERE id='corisco'");
+  await database.run("UPDATE players SET name='Martin', alias='Martin' WHERE id='krepox'");
   return database;
 }

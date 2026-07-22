@@ -9,15 +9,15 @@ type Player = { id: string; name: string; number: number; position: string; init
 
 const players: Player[] = [
   { id: "urko", name: "Urko", number: 3, position: "JUG", initials: "U" },
-  { id: "caspilla", name: "Caspilla", number: 7, position: "JUG", initials: "C" },
+  { id: "caspilla", name: "Jare", number: 7, position: "JUG", initials: "J" },
   { id: "eskuh", name: "Eskuh", number: 13, position: "JUG", initials: "E" },
   { id: "zuha", name: "Zuha", number: 8, position: "JUG", initials: "Z" },
-  { id: "corisco", name: "Corisco", number: 10, position: "JUG", initials: "C" },
+  { id: "corisco", name: "Sergio", number: 10, position: "JUG", initials: "S" },
   { id: "mauro-m", name: "Mauro M", number: 2, position: "JUG", initials: "M" },
   { id: "beltran-jr", name: "Beltran JR", number: 9, position: "JUG", initials: "B" },
   { id: "joaquinho", name: "Joaquinho", number: 6, position: "JUG", initials: "J" },
   { id: "ortiz", name: "Ortiz", number: 15, position: "JUG", initials: "O" },
-  { id: "krepox", name: "Krepox", number: 17, position: "JUG", initials: "K" },
+  { id: "krepox", name: "Martin", number: 17, position: "JUG", initials: "M" },
   { id: "rey", name: "Rey", number: 5, position: "JUG", initials: "R" },
   { id: "tono", name: "Toño", number: 99, position: "JUG", initials: "T" },
   { id: "d-plaza", name: "D. Plaza", number: 21, position: "JUG", initials: "D" },
@@ -30,6 +30,7 @@ const players: Player[] = [
   { id: "ivan", name: "Ivan", number: 28, position: "JUG", initials: "I" },
   { id: "saul", name: "Saúl", number: 20, position: "JUG", initials: "S" },
   { id: "pedro", name: "Pedro", number: 11, position: "JUG", initials: "P" },
+  { id: "dani", name: "Dani", number: 15, position: "JUG", initials: "D" },
   { id: "mario", name: "Mario", number: 25, position: "JUG", initials: "M" },
   { id: "juan-baroffi", name: "Juan Baroffi", number: 18, position: "JUG", initials: "J" },
 ];

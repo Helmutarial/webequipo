@@ -27,3 +27,11 @@ export const initialPlayers: Player[] = [
   position: "Jugador", photo: "", goals: 0, assists: 0, appearances: 0,
   bio: "Jugador del Aldapan Gora.",
 }));
+
+initialPlayers.find((player) => player.id === "caspilla")!.name = "Jare";
+initialPlayers.find((player) => player.id === "caspilla")!.alias = "Jare";
+initialPlayers.find((player) => player.id === "corisco")!.name = "Sergio";
+initialPlayers.find((player) => player.id === "corisco")!.alias = "Sergio";
+initialPlayers.find((player) => player.id === "krepox")!.name = "Martin";
+initialPlayers.find((player) => player.id === "krepox")!.alias = "Martin";
+initialPlayers.push({ id: "dani", name: "Dani", alias: "Dani", number: 15, position: "Jugador", photo: "", goals: 0, assists: 0, appearances: 0, bio: "Jugador del Aldapan Gora." });
