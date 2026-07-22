@@ -1,0 +1,3 @@
+aldapangora.es, www.aldapangora.es {
+  reverse_proxy web:3000
+}
