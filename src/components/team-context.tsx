@@ -7,8 +7,8 @@ const TeamContext = createContext<{ players: Player[]; updatePlayer: (player: Pl
 
 export function TeamProvider({ children }: { children: React.ReactNode }) {
   const [players, setPlayers] = useState<Player[]>(initialPlayers);
-  useEffect(() => { const saved = window.localStorage.getItem("aldapan-players"); if (saved) setPlayers(JSON.parse(saved)); }, []);
-  const updatePlayer = (player: Player) => setPlayers((current) => { const next = current.map((item) => item.id === player.id ? player : item); window.localStorage.setItem("aldapan-players", JSON.stringify(next)); return next; });
+  useEffect(() => { fetch("/api/players").then((response) => response.ok ? response.json() : Promise.reject()).then(setPlayers).catch(() => undefined); }, []);
+  const updatePlayer = (player: Player) => { setPlayers((current) => current.map((item) => item.id === player.id ? player : item)); const session = window.localStorage.getItem("aldapan-session"); const email = session ? JSON.parse(session).email : ""; void fetch("/api/players", { method: "PUT", headers: { "Content-Type": "application/json", "x-admin-email": email }, body: JSON.stringify(player) }); };
   const value = useMemo(() => ({ players, updatePlayer }), [players]);
   return <TeamContext.Provider value={value}>{children}</TeamContext.Provider>;
 }

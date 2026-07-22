@@ -36,4 +36,4 @@ Thumbs.db
 
 # Docker/local data
 docker-data/
-
+data/
