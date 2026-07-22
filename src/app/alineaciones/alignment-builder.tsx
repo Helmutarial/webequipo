@@ -60,6 +60,8 @@ export default function AlignmentBuilder() {
   const [slotPicker, setSlotPicker] = useState<string | null>(null);
   const [pickerRole, setPickerRole] = useState<"starter" | "substitute">("starter");
   const [saved, setSaved] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const [shareMessage, setShareMessage] = useState("");
   const positions = formations[formation];
   const assigned = useMemo(() => Object.values(lineup).flat(), [lineup]);
   const availablePlayers = players.filter((player) => !assigned.includes(player.id));
@@ -85,6 +87,57 @@ export default function AlignmentBuilder() {
   const getPlayer = (id: string) => players.find((player) => player.id === id);
   const pickerPlayers = players.filter((player) => !assigned.includes(player.id));
 
+  const shareLineup = async () => {
+    setSharing(true);
+    setShareMessage("");
+    try {
+      const crestResponse = await fetch("/club-crest.png");
+      const crestBlob = await crestResponse.blob();
+      const crestData = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(String(reader.result));
+        reader.onerror = reject;
+        reader.readAsDataURL(crestBlob);
+      });
+      const escapeXml = (value: string) => value.replace(/[&<>\"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '\"': "&quot;", "'": "&apos;" }[character] ?? character));
+      const field = positions.map((position) => (lineup[position.id] ?? []).map((playerId, index) => {
+        const player = getPlayer(playerId);
+        if (!player) return "";
+        const x = 80 + position.x * 7.4;
+        const y = 205 + position.y * 8.1 + index * 74;
+        const color = index ? "#595b61" : "#b49a6a";
+        const textColor = index ? "#fff" : "#0b0c0f";
+        return `<g transform="translate(${x} ${y})"><circle r="28" fill="${color}" stroke="#f7f7f5" stroke-width="3"/><text y="7" text-anchor="middle" font-family="Arial" font-size="20" font-weight="700" fill="${textColor}">${player.number}</text><rect x="-62" y="34" width="124" height="25" rx="4" fill="#0b0c0fee"/><text y="52" text-anchor="middle" font-family="Arial" font-size="14" font-weight="700" fill="#f7f7f5">${escapeXml(player.name)}</text></g>`;
+      }).join("")).join("");
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1200" viewBox="0 0 900 1200"><rect width="900" height="1200" fill="#101115"/><image href="${crestData}" x="42" y="34" width="74" height="74"/><text x="140" y="66" font-family="Arial" font-size="25" font-weight="700" letter-spacing="4" fill="#f7f7f5">ALDAPAN GORA</text><text x="140" y="94" font-family="Arial" font-size="14" letter-spacing="2" fill="#d1b783">ALINEACIÓN · ${formation}</text><rect x="40" y="140" width="820" height="1015" rx="8" fill="#315f42" stroke="#d0d6c0" stroke-opacity=".5" stroke-width="3"/><path d="M40 647.5H860 M40 211H860 M40 1084H860" stroke="#d0d6c0" stroke-opacity=".5" stroke-width="2" fill="none"/><rect x="261" y="211" width="378" height="162" fill="none" stroke="#d0d6c0" stroke-opacity=".5" stroke-width="2"/><rect x="261" y="922" width="378" height="162" fill="none" stroke="#d0d6c0" stroke-opacity=".5" stroke-width="2"/><circle cx="450" cy="647.5" r="94" fill="none" stroke="#d0d6c0" stroke-opacity=".5" stroke-width="2"/>${field}</svg>`;
+      const svgBlob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
+      const imageUrl = URL.createObjectURL(svgBlob);
+      const image = new window.Image();
+      image.src = imageUrl;
+      await new Promise<void>((resolve, reject) => { image.onload = () => resolve(); image.onerror = () => reject(new Error("No se pudo crear la imagen")); });
+      const canvas = document.createElement("canvas");
+      canvas.width = 900; canvas.height = 1200;
+      canvas.getContext("2d")?.drawImage(image, 0, 0);
+      URL.revokeObjectURL(imageUrl);
+      const pngBlob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("No se pudo exportar la imagen")), "image/png"));
+      const file = new File([pngBlob], `alineacion-${formation}.png`, { type: "image/png" });
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ title: `Alineación Aldapan Gora · ${formation}`, text: "Nuestra alineación del Aldapan Gora", files: [file] });
+        setShareMessage("Imagen lista para compartir");
+      } else {
+        const downloadUrl = URL.createObjectURL(pngBlob);
+        const link = document.createElement("a"); link.href = downloadUrl; link.download = file.name; link.click();
+        URL.revokeObjectURL(downloadUrl);
+        window.open("https://wa.me/?text=" + encodeURIComponent(`Alineación Aldapan Gora · ${formation}`), "_blank", "noopener,noreferrer");
+        setShareMessage("Imagen descargada. Adjunta el PNG en WhatsApp.");
+      }
+    } catch (error) {
+      if ((error as Error).name !== "AbortError") setShareMessage("No se pudo preparar la imagen. Inténtalo de nuevo.");
+    } finally {
+      setSharing(false);
+    }
+  };
+
   return <main className="builder-page">
     <nav className="builder-nav shell"><a className="brand" href="/"><Image src="/club-crest.png" alt="Escudo Aldapan Gora" width={42} height={42} className="crest small" /><span>ALDAPAN<br /><i>GORA</i></span></a><div className="builder-breadcrumb"><span>Panel del equipo</span><b>/</b><strong>Creador de alineaciones</strong></div><a className="builder-back" href="/">Volver a la web <span>↗</span></a></nav>
 
@@ -94,7 +147,7 @@ export default function AlignmentBuilder() {
 
       <div className="pitch-panel"><div className="pitch-toolbar"><div><span className="section-label">SISTEMA DE JUEGO</span><h2>{formation}</h2></div><div className="formation-options">{(Object.keys(formations) as FormationKey[]).map((item) => <button key={item} className={formation === item ? "active" : ""} onClick={() => chooseFormation(item)}>{item}</button>)}</div></div><div className="pitch-wrap"><div className="pitch"><div className="halfway" /><div className="center-circle" /><div className="penalty top" /><div className="penalty bottom" /><div className="goal top" /><div className="goal bottom" />{positions.map((position) => { const names = lineup[position.id] ?? []; return <button key={position.id} className={`position-slot ${names.length ? "filled" : ""}`} style={{ left: `${position.x}%`, top: `${position.y}%` }} onClick={() => openPicker(position.id)}><span className="position-label">{position.label}</span>{names.length ? names.map((playerId, index) => { const player = getPlayer(playerId); return <span className={`slot-player player-${index}`} key={playerId} onClick={(event) => { event.stopPropagation(); removePlayer(position.id, playerId); }}><b>{player?.number}</b>{player?.name}<i>×</i></span>; }) : <span className="empty-slot">+</span>}</button>; })}</div></div><div className="pitch-hint">Pulsa el <b>+</b> de cualquier posición para elegir el titular y su suplente</div></div>
 
-      <aside className="summary-panel"><div className="panel-title"><div><span className="section-label">RESUMEN</span><h2>Tu once</h2></div><span className="ready-count">{assigned.length === 11 ? "COMPLETO" : `${11 - assigned.length} POR CUBRIR`}</span></div><div className="summary-list">{positions.map((position) => { const names = lineup[position.id] ?? []; return <div className="summary-slot" key={position.id}><span className="summary-position">{position.label}</span><div>{names.length ? names.map((id, index) => <span key={id} className={index ? "bench-name" : "starter-name"}>{getPlayer(id)?.name}{index ? " · suplente" : ""}</span>) : <span className="missing">Sin asignar</span>}</div></div>; })}</div><div className="summary-actions"><button className="save-button" onClick={() => setSaved(true)}>{saved ? "✓ Alineación guardada" : "Guardar alineación"}</button><button className="reset-button" onClick={() => { setLineup({}); setSaved(false); }}>Reiniciar</button></div></aside></section>
+      <aside className="summary-panel"><div className="panel-title"><div><span className="section-label">RESUMEN</span><h2>Tu once</h2></div><span className="ready-count">{assigned.length === 11 ? "COMPLETO" : `${11 - assigned.length} POR CUBRIR`}</span></div><div className="summary-list">{positions.map((position) => { const names = lineup[position.id] ?? []; return <div className="summary-slot" key={position.id}><span className="summary-position">{position.label}</span><div>{names.length ? names.map((id, index) => <span key={id} className={index ? "bench-name" : "starter-name"}>{getPlayer(id)?.name}{index ? " · suplente" : ""}</span>) : <span className="missing">Sin asignar</span>}</div></div>; })}</div><div className="summary-actions"><button className="share-button" onClick={shareLineup} disabled={sharing}>{sharing ? "Preparando imagen…" : "Compartir alineación"}</button>{shareMessage && <p className="share-message" aria-live="polite">{shareMessage}</p>}<button className="save-button" onClick={() => setSaved(true)}>{saved ? "✓ Alineación guardada" : "Guardar alineación"}</button><button className="reset-button" onClick={() => { setLineup({}); setSaved(false); }}>Reiniciar</button></div></aside></section>
     {slotPicker && <div className="picker-backdrop" role="presentation" onClick={() => setSlotPicker(null)}><section className="player-picker" role="dialog" aria-modal="true" aria-label="Elegir jugador" onClick={(event) => event.stopPropagation()}><div className="picker-header"><div><span className="section-label">AÑADIR A LA POSICIÓN</span><h2>{positions.find((position) => position.id === slotPicker)?.label}</h2></div><button className="picker-close" onClick={() => setSlotPicker(null)}>×</button></div><div className="picker-tabs"><button className={pickerRole === "starter" ? "active" : ""} onClick={() => setPickerRole("starter")}>Titular</button><button className={pickerRole === "substitute" ? "active" : ""} onClick={() => setPickerRole("substitute")}>Suplente</button></div><p className="picker-help">Elige quién ocupará esta posición. Puedes cambiarlo o quitarlo desde el campo.</p><div className="picker-grid">{pickerPlayers.map((player) => <button className="picker-player" key={player.id} onClick={() => choosePlayer(player.id)}><span className="player-avatar">{player.initials}</span><span className="player-data"><strong>{player.name}</strong><small>{player.position} · #{player.number}</small></span><span>+</span></button>)}{pickerPlayers.length === 0 && <p className="picker-empty">Todos los jugadores están colocados.</p>}</div></section></div>}
   </main>;
 }
