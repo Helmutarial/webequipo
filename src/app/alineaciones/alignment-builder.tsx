@@ -30,6 +30,8 @@ const players: Player[] = [
   { id: "ivan", name: "Ivan", number: 28, position: "JUG", initials: "I" },
   { id: "saul", name: "Saúl", number: 20, position: "JUG", initials: "S" },
   { id: "pedro", name: "Pedro", number: 11, position: "JUG", initials: "P" },
+  { id: "mario", name: "Mario", number: 25, position: "JUG", initials: "M" },
+  { id: "juan-baroffi", name: "Juan Baroffi", number: 18, position: "JUG", initials: "J" },
 ];
 
 const formations: Record<FormationKey, Position[]> = {
