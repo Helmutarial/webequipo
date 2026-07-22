@@ -33,6 +33,10 @@ const players: Player[] = [
   { id: "dani", name: "Dani", number: 15, position: "JUG", initials: "D" },
   { id: "mario", name: "Mario", number: 25, position: "JUG", initials: "M" },
   { id: "juan-baroffi", name: "Juan Baroffi", number: 18, position: "JUG", initials: "J" },
+  { id: "juanjo", name: "Juanjo", number: 0, position: "JUG", initials: "J" },
+  { id: "padri", name: "Padri", number: 0, position: "JUG", initials: "P" },
+  { id: "gerardo", name: "Gerardo", number: 0, position: "JUG", initials: "G" },
+  { id: "carlos", name: "Carlos", number: 0, position: "JUG", initials: "C" },
 ];
 
 const formations: Record<FormationKey, Position[]> = {
@@ -110,7 +114,7 @@ export default function AlignmentBuilder() {
         const y = 205 + position.y * 8.1 + index * 74;
         const color = index ? "#595b61" : "#b49a6a";
         const textColor = index ? "#fff" : "#0b0c0f";
-        return `<g transform="translate(${x} ${y})"><circle r="28" fill="${color}" stroke="#f7f7f5" stroke-width="3"/><text y="7" text-anchor="middle" font-family="Arial" font-size="20" font-weight="700" fill="${textColor}">${player.number}</text><rect x="-62" y="34" width="124" height="25" rx="4" fill="#0b0c0fee"/><text y="52" text-anchor="middle" font-family="Arial" font-size="14" font-weight="700" fill="#f7f7f5">${escapeXml(player.name)}</text></g>`;
+        return `<g transform="translate(${x} ${y})"><circle r="28" fill="${color}" stroke="#f7f7f5" stroke-width="3"/><text y="7" text-anchor="middle" font-family="Arial" font-size="20" font-weight="700" fill="${textColor}">${player.number || "—"}</text><rect x="-62" y="34" width="124" height="25" rx="4" fill="#0b0c0fee"/><text y="52" text-anchor="middle" font-family="Arial" font-size="14" font-weight="700" fill="#f7f7f5">${escapeXml(player.name)}</text></g>`;
       }).join("")).join("");
       const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1200" viewBox="0 0 900 1200"><rect width="900" height="1200" fill="#101115"/><image href="${crestData}" x="42" y="34" width="74" height="74"/><text x="140" y="66" font-family="Arial" font-size="25" font-weight="700" letter-spacing="4" fill="#f7f7f5">ALDAPAN GORA</text><text x="140" y="94" font-family="Arial" font-size="14" letter-spacing="2" fill="#d1b783">ALINEACIÓN · ${formation}</text><rect x="40" y="140" width="820" height="1015" rx="8" fill="#315f42" stroke="#d0d6c0" stroke-opacity=".5" stroke-width="3"/><path d="M40 647.5H860 M40 211H860 M40 1084H860" stroke="#d0d6c0" stroke-opacity=".5" stroke-width="2" fill="none"/><rect x="261" y="211" width="378" height="162" fill="none" stroke="#d0d6c0" stroke-opacity=".5" stroke-width="2"/><rect x="261" y="922" width="378" height="162" fill="none" stroke="#d0d6c0" stroke-opacity=".5" stroke-width="2"/><circle cx="450" cy="647.5" r="94" fill="none" stroke="#d0d6c0" stroke-opacity=".5" stroke-width="2"/>${field}</svg>`;
       const svgBlob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
