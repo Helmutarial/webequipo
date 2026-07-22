@@ -1,0 +1,16 @@
+"use client";
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useAuth } from "@/components/auth-context";
+import { Player } from "@/lib/team";
+import { useTeam } from "@/components/team-context";
+
+export default function AdminPage() {
+  const router = useRouter(); const { session } = useAuth(); const { players, updatePlayer } = useTeam(); const [selected, setSelected] = useState<Player | null>(null); const [saved, setSaved] = useState(false);
+  useEffect(() => { if (!session) router.replace("/iniciar-sesion"); }, [router, session]);
+  if (!session) return null;
+  const save = () => { if (selected) { updatePlayer(selected); setSaved(true); } };
+  return <main className="content-page shell"><div className="admin-heading"><div><span className="section-label">PANEL DE ADMINISTRACIÓN</span><h1>Hola, {session.name}<span>.</span></h1><p>Edita la información pública de la plantilla sin tocar el código.</p></div><Link className="text-link" href="/equipo">Ver web pública ↗</Link></div><div className="admin-layout"><div className="admin-player-list">{players.map((player) => <button className={selected?.id === player.id ? "admin-player active" : "admin-player"} onClick={() => { setSelected(player); setSaved(false); }} key={player.id}><span className="player-avatar">{player.name.slice(0, 1)}</span><span><strong>{player.name}</strong><small>#{player.number} · {player.position}</small></span><b>Editar</b></button>)}</div>{selected ? <section className="edit-card"><span className="section-label">EDITANDO JUGADOR</span><h2>{selected.name}</h2><div className="edit-grid"><label>Nombre<input value={selected.name} onChange={(event) => setSelected({ ...selected, name: event.target.value })} /></label><label>Alias<input value={selected.alias} onChange={(event) => setSelected({ ...selected, alias: event.target.value })} /></label><label>Dorsal<input type="number" value={selected.number} onChange={(event) => setSelected({ ...selected, number: Number(event.target.value) })} /></label><label>Posición<input value={selected.position} onChange={(event) => setSelected({ ...selected, position: event.target.value })} /></label><label>Goles<input type="number" value={selected.goals} onChange={(event) => setSelected({ ...selected, goals: Number(event.target.value) })} /></label><label>Asistencias<input type="number" value={selected.assists} onChange={(event) => setSelected({ ...selected, assists: Number(event.target.value) })} /></label><label>Partidos<input type="number" value={selected.appearances} onChange={(event) => setSelected({ ...selected, appearances: Number(event.target.value) })} /></label><label>Foto (URL)<input value={selected.photo} onChange={(event) => setSelected({ ...selected, photo: event.target.value })} placeholder="https://..." /></label><label className="full-field">Descripción<textarea value={selected.bio} onChange={(event) => setSelected({ ...selected, bio: event.target.value })} /></label></div><button className="save-button" onClick={save}>Guardar cambios</button>{saved && <span className="saved-notice">Cambios guardados en este navegador.</span>}</section> : <section className="edit-empty"><span>←</span><p>Selecciona un jugador para editar su ficha.</p></section>}</div></main>;
+}

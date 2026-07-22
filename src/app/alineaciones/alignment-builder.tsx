@@ -139,7 +139,7 @@ export default function AlignmentBuilder() {
   };
 
   return <main className="builder-page">
-    <nav className="builder-nav shell"><a className="brand" href="/"><Image src="/club-crest.png" alt="Escudo Aldapan Gora" width={42} height={42} className="crest small" /><span>ALDAPAN<br /><i>GORA</i></span></a><div className="builder-breadcrumb"><span>Panel del equipo</span><b>/</b><strong>Creador de alineaciones</strong></div><a className="builder-back" href="/">Volver a la web <span>↗</span></a></nav>
+    <nav className="builder-nav shell legacy-builder-nav"><a className="brand" href="/"><Image src="/club-crest.png" alt="Escudo Aldapan Gora" width={42} height={42} className="crest small" /><span>ALDAPAN<br /><i>GORA</i></span></a><div className="builder-breadcrumb"><span>Panel del equipo</span><b>/</b><strong>Creador de alineaciones</strong></div><a className="builder-back" href="/">Volver a la web <span>↗</span></a></nav>
 
     <section className="builder-heading shell"><div><span className="section-label">HERRAMIENTA DEL CUERPO TÉCNICO</span><h1>Creador de <em>alineaciones.</em></h1><p>Prepara el once, añade alternativas por posición y guarda la idea para el próximo partido.</p></div><div className="builder-match"><span>PRÓXIMO PARTIDO</span><strong>ALDAPAN GORA <b>VS</b> ATLÉTICO RIVAL</strong><small>Sáb · 28 JUN 2026 · 18:30</small></div></section>
 

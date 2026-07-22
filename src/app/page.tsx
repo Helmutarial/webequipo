@@ -13,7 +13,7 @@ function Crest({ small = false }: { small?: boolean }) {
 export default function Home() {
   return (
     <main>
-      <nav className="topbar shell">
+      <nav className="topbar shell legacy-home-nav">
         <a className="brand" href="#inicio"><Crest small /><span>ALDAPAN<br /><i>GORA</i></span></a>
         <div className="navlinks"><a href="#equipo">El equipo</a><a href="#partidos">Partidos</a><a href="#noticias">Noticias</a><a href="#estadisticas">Estadísticas</a><a href="/alineaciones">Alineaciones</a></div>
         <a className="menu-button" href="#partidos">Ver calendario <span>↗</span></a>
