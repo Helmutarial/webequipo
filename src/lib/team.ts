@@ -10,6 +10,10 @@ export type Player = {
   goals: number;
   assists: number;
   appearances: number;
+  minutes: number;
+  starterAppearances: number;
+  substituteAppearances: number;
+  mvpCount: number;
   bio: string;
 };
 
@@ -25,6 +29,7 @@ export const initialPlayers: Player[] = [
 ].map(([id, name, alias, number]) => ({
   id: id as string, name: name as string, alias: alias as string, number: number as number,
   position: "Jugador", photo: "", goals: 0, assists: 0, appearances: 0,
+  minutes: 0, starterAppearances: 0, substituteAppearances: 0, mvpCount: 0,
   bio: "Jugador del Aldapan Gora.",
 }));
 
@@ -34,10 +39,7 @@ initialPlayers.find((player) => player.id === "corisco")!.name = "Sergio";
 initialPlayers.find((player) => player.id === "corisco")!.alias = "Sergio";
 initialPlayers.find((player) => player.id === "krepox")!.name = "Martin";
 initialPlayers.find((player) => player.id === "krepox")!.alias = "Martin";
-initialPlayers.push({ id: "dani", name: "Dani", alias: "Dani", number: 15, position: "Jugador", photo: "", goals: 0, assists: 0, appearances: 0, bio: "Jugador del Aldapan Gora." });
+initialPlayers.push({ id: "dani", name: "Dani", alias: "Dani", number: 15, position: "Jugador", photo: "", goals: 0, assists: 0, appearances: 0, minutes: 0, starterAppearances: 0, substituteAppearances: 0, mvpCount: 0, bio: "Jugador del Aldapan Gora." });
 initialPlayers.push(
-  { id: "juanjo", name: "Juanjo", alias: "Juanjo", number: 0, position: "Jugador", photo: "", goals: 0, assists: 0, appearances: 0, bio: "Jugador del Aldapan Gora." },
-  { id: "padri", name: "Padri", alias: "Padri", number: 0, position: "Jugador", photo: "", goals: 0, assists: 0, appearances: 0, bio: "Jugador del Aldapan Gora." },
-  { id: "gerardo", name: "Gerardo", alias: "Gerardo", number: 0, position: "Jugador", photo: "", goals: 0, assists: 0, appearances: 0, bio: "Jugador del Aldapan Gora." },
-  { id: "carlos", name: "Carlos", alias: "Carlos", number: 0, position: "Jugador", photo: "", goals: 0, assists: 0, appearances: 0, bio: "Jugador del Aldapan Gora." },
+  ...["Juanjo", "Padri", "Gerardo", "Carlos"].map((name) => ({ id: name.toLowerCase(), name, alias: name, number: 0, position: "Jugador", photo: "", goals: 0, assists: 0, appearances: 0, minutes: 0, starterAppearances: 0, substituteAppearances: 0, mvpCount: 0, bio: "Jugador del Aldapan Gora." })),
 );
