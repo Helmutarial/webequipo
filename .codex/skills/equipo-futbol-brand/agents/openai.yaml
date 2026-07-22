@@ -1,0 +1,4 @@
+interface:
+  display_name: "Equipo Fútbol Brand"
+  short_description: "Aplica la identidad visual del equipo a diseños y contenido web."
+  default_prompt: "Usa la identidad visual del equipo para diseñar o revisar esta interfaz web."

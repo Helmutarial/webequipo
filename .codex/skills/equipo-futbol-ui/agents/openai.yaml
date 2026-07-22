@@ -1,0 +1,4 @@
+interface:
+  display_name: "Equipo Fútbol UI"
+  short_description: "Construye interfaces deportivas modernas para el sitio."
+  default_prompt: "Diseña o implementa esta pantalla con el sistema visual del equipo y una experiencia deportiva moderna."
