@@ -26,6 +26,7 @@ export default function MatchAdminEditor({ players }: { players: Player[] }) {
   const { matches, saveMatch, createMatch, deleteMatch } = useMatches();
   const [selected, setSelected] = useState<Match | null>(null);
   const [saved, setSaved] = useState(false);
+  const [eventDraft, setEventDraft] = useState({ minute: "0", scorer: "", assist: "", subIn: "", subOut: "", mvp: "" });
   const editRef = useRef<HTMLElement | null>(null);
   const playerIds = new Set(players.map((player) => player.id));
   const playerName = (id: string) => players.find((player) => player.id === id)?.name || id;
@@ -49,6 +50,31 @@ export default function MatchAdminEditor({ players }: { players: Player[] }) {
         ? { minute: 90, type, player: firstStarter }
         : { minute: 0, type, player: firstStarter, relatedPlayer: "", detail: "Aldapan Gora" };
     return { ...current, events: [...current.events, event] };
+  });
+  const addGoalDraft = (opponentGoal = false) => setSelected((current) => {
+    if (!current) return current;
+    const event: MatchEvent = {
+      minute: Number(eventDraft.minute) || 0,
+      type: "goal",
+      player: opponentGoal ? current.opponent : eventDraft.scorer,
+      relatedPlayer: opponentGoal ? "" : eventDraft.assist,
+      detail: opponentGoal ? current.opponent : "Aldapan Gora",
+    };
+    if (!event.player) return current;
+    return {
+      ...current,
+      homeScore: opponentGoal ? current.homeScore : (current.homeScore ?? 0) + 1,
+      awayScore: opponentGoal ? (current.awayScore ?? 0) + 1 : current.awayScore,
+      events: [...current.events, event],
+    };
+  });
+  const addSubstitutionDraft = () => setSelected((current) => {
+    if (!current || !eventDraft.subIn || !eventDraft.subOut) return current;
+    return { ...current, events: [...current.events, { minute: Number(eventDraft.minute) || 0, type: "substitution", player: eventDraft.subIn, relatedPlayer: eventDraft.subOut }] };
+  });
+  const addMvpDraft = () => setSelected((current) => {
+    if (!current || !eventDraft.mvp) return current;
+    return { ...current, events: [...current.events.filter((event) => event.type !== "mvp"), { minute: 90, type: "mvp", player: eventDraft.mvp }] };
   });
   const updateEvent = <K extends keyof MatchEvent>(index: number, field: K, value: MatchEvent[K]) => setSelected((current) => current ? { ...current, events: current.events.map((event, eventIndex) => eventIndex === index ? { ...event, [field]: value } : event) } : current);
   const removeEvent = (index: number) => setSelected((current) => current ? { ...current, events: current.events.filter((_, eventIndex) => eventIndex !== index) } : current);
@@ -126,6 +152,33 @@ export default function MatchAdminEditor({ players }: { players: Player[] }) {
           <button onClick={() => addQuickEvent("goal")}>+ Gol Aldapan</button>
           <button onClick={() => addQuickEvent("substitution")}>+ Cambio</button>
           <button onClick={() => addQuickEvent("mvp")}>+ MVP</button>
+        </div>
+        <div className="visual-acta">
+          <label>Minuto<input type="number" value={eventDraft.minute} onChange={(event) => setEventDraft((current) => ({ ...current, minute: event.target.value }))} /></label>
+          <div className="visual-acta-block">
+            <h4>Gol</h4>
+            <p>Elige goleador y, si quieres, asistente.</p>
+            <div className="visual-acta-columns">
+              <div><span>Goleador</span><div className="mini-player-grid">{[...selected.starters, ...selected.substitutes].map((playerId) => <button className={eventDraft.scorer === playerId ? "active" : ""} onClick={() => setEventDraft((current) => ({ ...current, scorer: playerId }))} key={playerId}>{playerName(playerId)}</button>)}</div></div>
+              <div><span>Asistente</span><div className="mini-player-grid">{[...selected.starters, ...selected.substitutes].map((playerId) => <button className={eventDraft.assist === playerId ? "active" : ""} onClick={() => setEventDraft((current) => ({ ...current, assist: current.assist === playerId ? "" : playerId }))} key={playerId}>{playerName(playerId)}</button>)}</div></div>
+            </div>
+            <div className="visual-acta-actions"><button onClick={() => addGoalDraft(false)}>Añadir gol Aldapan</button><button onClick={() => addGoalDraft(true)}>Gol rival</button></div>
+          </div>
+          <div className="visual-acta-block">
+            <h4>Cambio</h4>
+            <p>Marca quién entra y quién sale.</p>
+            <div className="visual-acta-columns">
+              <div><span>Entra</span><div className="mini-player-grid">{selected.substitutes.map((playerId) => <button className={eventDraft.subIn === playerId ? "active" : ""} onClick={() => setEventDraft((current) => ({ ...current, subIn: playerId }))} key={playerId}>{playerName(playerId)}</button>)}</div></div>
+              <div><span>Sale</span><div className="mini-player-grid">{selected.starters.map((playerId) => <button className={eventDraft.subOut === playerId ? "active" : ""} onClick={() => setEventDraft((current) => ({ ...current, subOut: playerId }))} key={playerId}>{playerName(playerId)}</button>)}</div></div>
+            </div>
+            <div className="visual-acta-actions"><button onClick={addSubstitutionDraft}>Añadir cambio</button></div>
+          </div>
+          <div className="visual-acta-block">
+            <h4>MVP</h4>
+            <p>Selecciona el jugador del partido.</p>
+            <div className="mini-player-grid">{[...selected.starters, ...selected.substitutes].map((playerId) => <button className={eventDraft.mvp === playerId ? "active" : ""} onClick={() => setEventDraft((current) => ({ ...current, mvp: playerId }))} key={playerId}>{playerName(playerId)}</button>)}</div>
+            <div className="visual-acta-actions"><button onClick={addMvpDraft}>Guardar MVP</button></div>
+          </div>
         </div>
         <div className="event-editor-list">
           {selected.events.map((event, index) => <div className="event-editor-row" key={index}>
