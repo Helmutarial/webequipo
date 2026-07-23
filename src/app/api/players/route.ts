@@ -1,11 +1,43 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDatabase } from "@/lib/db";
 import { isAdminRequest } from "@/lib/auth";
+import { Match } from "@/lib/matches";
+import { calculatePlayerStats } from "@/lib/player-stats";
+
+const parseMatch = (row: Record<string, unknown>): Match => ({
+  id: String(row.id),
+  opponent: String(row.opponent),
+  opponentShort: String(row.opponentShort),
+  date: String(row.date),
+  competition: String(row.competition),
+  venue: String(row.venue),
+  status: row.status === "upcoming" ? "upcoming" : "finished",
+  homeScore: row.homeScore == null ? null : Number(row.homeScore),
+  awayScore: row.awayScore == null ? null : Number(row.awayScore),
+  starters: JSON.parse(String(row.starters)),
+  substitutes: JSON.parse(String(row.substitutes)),
+  events: JSON.parse(String(row.events)),
+});
 
 export async function GET() {
   const database = await getDatabase();
   const players = await database.all("SELECT id,name,alias,number,position,photo,goals,assists,appearances,minutes,starterAppearances,substituteAppearances,mvpCount,bio FROM players ORDER BY CASE WHEN number = 0 THEN 999 ELSE number END ASC");
-  return NextResponse.json(players);
+  const matches = (await database.all("SELECT * FROM matches")).map(parseMatch);
+  const matchStats = calculatePlayerStats(matches, players.map((player) => player.id));
+  return NextResponse.json(players.map((player) => {
+    const computed = matchStats.get(player.id);
+    if (!computed) return player;
+    return {
+      ...player,
+      goals: Number(player.goals) + computed.goals,
+      assists: Number(player.assists) + computed.assists,
+      appearances: Number(player.appearances) + computed.appearances,
+      minutes: Number(player.minutes) + computed.minutes,
+      starterAppearances: Number(player.starterAppearances) + computed.starterAppearances,
+      substituteAppearances: Number(player.substituteAppearances) + computed.substituteAppearances,
+      mvpCount: Number(player.mvpCount) + computed.mvpCount,
+    };
+  }));
 }
 
 export async function PUT(request: NextRequest) {

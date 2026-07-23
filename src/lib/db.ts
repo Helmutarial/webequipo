@@ -57,5 +57,8 @@ async function initializeDatabase() {
   const matchStatement = await database.prepare("INSERT OR IGNORE INTO matches (id,opponent,opponentShort,date,competition,venue,status,homeScore,awayScore,starters,substitutes,events,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))");
   for (const match of initialMatches) await matchStatement.run(match.id, match.opponent, match.opponentShort, match.date, match.competition, match.venue, match.status, match.homeScore, match.awayScore, JSON.stringify(match.starters), JSON.stringify(match.substitutes), JSON.stringify(match.events));
   await matchStatement.finalize();
+  const matchUpdateStatement = await database.prepare("UPDATE matches SET opponent=?, opponentShort=?, date=?, competition=?, venue=?, status=?, homeScore=?, awayScore=?, starters=?, substitutes=?, events=?, updated_at=datetime('now') WHERE id=?");
+  for (const match of initialMatches) await matchUpdateStatement.run(match.opponent, match.opponentShort, match.date, match.competition, match.venue, match.status, match.homeScore, match.awayScore, JSON.stringify(match.starters), JSON.stringify(match.substitutes), JSON.stringify(match.events), match.id);
+  await matchUpdateStatement.finalize();
   return database;
 }
