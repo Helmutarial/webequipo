@@ -7,7 +7,7 @@ import { useAuth } from "@/components/auth-context";
 import { useTeam } from "@/components/team-context";
 import { useNews } from "@/components/news-context";
 import { NewsItem } from "@/lib/news";
-import { Player } from "@/lib/team";
+import { ADMIN_PROFILE, Player } from "@/lib/team";
 
 const blankNews = (): NewsItem => ({ id: "", title: "", slug: "", excerpt: "", content: "", tag: "CLUB", date: new Date().toISOString().slice(0, 10), image: "", accent: "gold", published: true });
 
@@ -21,7 +21,7 @@ export default function AdminPage() {
   const [selectedNews, setSelectedNews] = useState<NewsItem | null>(null);
   const [saved, setSaved] = useState(false);
 
-  const isAdmin = session?.role === "ADMIN";
+  const isAdmin = session?.role === "ADMIN" || session?.email === ADMIN_PROFILE.email;
   const isNewsEditor = session?.role === "NEWS_EDITOR";
 
   useEffect(() => {

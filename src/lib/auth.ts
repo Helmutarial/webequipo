@@ -28,16 +28,21 @@ export function getSessionFromToken(token: string | undefined): SessionProfile |
   if (!token) return null;
   const [encodedPayload, signature] = token.split(".");
   if (!encodedPayload || !signature) return null;
-  const expected = createHmac("sha256", secret()).update(encodedPayload).digest("base64url");
-  if (signature.length !== expected.length || !timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return null;
-
   try {
-    const payload = JSON.parse(Buffer.from(encodedPayload, "base64url").toString("utf8"));
-    const email = String(payload.email || "").toLowerCase();
-    const role = String(payload.role || "");
-    if (role === "ADMIN" && email === ADMIN_PROFILE.email) return ADMIN_PROFILE;
-    const editor = getNewsEditorProfile();
-    if (role === "NEWS_EDITOR" && editor && email === editor.email) return editor;
+    const payloadText = Buffer.from(encodedPayload, "base64url").toString("utf8");
+    const expected = createHmac("sha256", secret()).update(encodedPayload).digest("base64url");
+    if (signature.length === expected.length && timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+      const payload = JSON.parse(payloadText);
+      const email = String(payload.email || "").toLowerCase();
+      const role = String(payload.role || "");
+      if (role === "ADMIN" && email === ADMIN_PROFILE.email) return ADMIN_PROFILE;
+      const editor = getNewsEditorProfile();
+      if (role === "NEWS_EDITOR" && editor && email === editor.email) return editor;
+    }
+
+    const legacyExpected = createHmac("sha256", secret()).update(payloadText).digest("base64url");
+    if (signature.length !== legacyExpected.length || !timingSafeEqual(Buffer.from(signature), Buffer.from(legacyExpected))) return null;
+    if (payloadText.startsWith(`${ADMIN_PROFILE.email}.`)) return ADMIN_PROFILE;
   } catch {
     return null;
   }
