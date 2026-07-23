@@ -43,3 +43,26 @@ initialPlayers.push({ id: "dani", name: "Dani", alias: "Dani", number: 15, posit
 initialPlayers.push(
   ...["Juanjo", "Padri", "Gerardo", "Carlos"].map((name) => ({ id: name.toLowerCase(), name, alias: name, number: 0, position: "Jugador", photo: "", goals: 0, assists: 0, appearances: 0, minutes: 0, starterAppearances: 0, substituteAppearances: 0, mvpCount: 0, bio: "Jugador del Aldapan Gora." })),
 );
+
+const removedPlayerIds = new Set(["zuha", "beltran-jr", "joaquinho", "tono", "d-plaza", "juanorro", "luaces", "saul"]);
+for (let index = initialPlayers.length - 1; index >= 0; index--) if (removedPlayerIds.has(initialPlayers[index].id)) initialPlayers.splice(index, 1);
+
+const positionUpdates: Record<string, { name?: string; alias?: string; position: string }> = {
+  eskuh: { position: "POR" },
+  "juan-baroffi": { position: "DC / MP" },
+  pedro: { position: "Delantero" },
+  ortiz: { position: "MI" },
+  moreno: { position: "MI / MC" },
+  krepox: { position: "LD" },
+  "fj-garcia": { name: "Figa", alias: "Figa", position: "DC" },
+  anglada: { position: "MD" },
+  corisco: { position: "MC / MCD" },
+  mario: { position: "DFC / MC / MCD" },
+  dani: { position: "LI" },
+  ivan: { position: "LI" },
+  molinpower: { name: "Molina", alias: "Molina", position: "MC / MCD" },
+};
+for (const player of initialPlayers) {
+  const update = positionUpdates[player.id];
+  if (update) Object.assign(player, update);
+}
