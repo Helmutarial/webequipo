@@ -142,20 +142,21 @@ h1,h2,h3,p { margin-top:0; } h1,h2,h3 { font-family:'Space Grotesk',sans-serif; 
 .picker-backdrop { position:fixed; inset:0; z-index:20; display:grid; place-items:center; padding:20px; background:#050608b8; backdrop-filter:blur(7px); }.player-picker { width:min(470px,100%); max-height:min(680px,calc(100vh - 40px)); overflow:auto; padding:24px; background:#17191e; border:1px solid #5b513e; box-shadow:0 20px 70px #0009; }.picker-header { display:flex; justify-content:space-between; align-items:start; }.picker-header h2 { font:600 28px 'Space Grotesk'; margin:10px 0 0; }.picker-close { border:0; background:transparent; color:#aaa; font-size:28px; cursor:pointer; }.picker-current { display:grid; gap:7px; margin:20px 0 0; padding:10px; background:#101115; border:1px solid var(--line); }.picker-current>div { display:flex; align-items:center; justify-content:space-between; gap:10px; }.picker-current span { display:flex; flex-direction:column; gap:3px; }.picker-current strong { color:var(--cream); font-size:11px; }.picker-current small { color:var(--gold-light); font-size:8px; text-transform:uppercase; letter-spacing:1px; }.picker-current button { padding:8px 10px; border:1px solid #8d4545; background:#2a1719; color:#d88b8b; cursor:pointer; font-size:10px; font-weight:700; }.picker-tabs { display:grid; grid-template-columns:1fr 1fr; gap:5px; margin-top:24px; }.picker-tabs button { padding:11px; color:#8d8f96; background:#111216; border:1px solid var(--line); cursor:pointer; font-size:11px; }.picker-tabs button.active { background:var(--gold); color:var(--black); border-color:var(--gold); font-weight:700; }.picker-help { color:#85878e; font-size:11px; line-height:1.5; }.picker-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; }.picker-player { display:flex; align-items:center; gap:8px; padding:9px; text-align:left; background:#202229; border:1px solid transparent; color:var(--cream); cursor:pointer; }.picker-player:hover { border-color:var(--gold); background:#28271f; }.picker-player>span:last-child { color:var(--gold-light); font-size:17px; }.picker-empty { grid-column:1/-1; color:#777a81; font-size:11px; }
 
 /* Lineup: crop full player cards into a clean portrait */
-.position-slot.filled { min-width:86px; }
-.slot-player.player-0 { width:74px; min-height:103px; border-radius:6px; }
-.slot-player.player-0 .starter-photo { width:100%; height:76px; flex:0 0 76px; background:#0b0c0f; }
-.slot-player.player-0 .starter-photo img { object-fit:contain; object-position:center; transform:none; background:#0b0c0f; }
-.slot-player.player-0 .slot-name-row { min-height:27px; }
+.position-slot.filled { min-width:82px; }
+.slot-player.player-0 { width:74px; aspect-ratio:905/1280; min-height:0; border-radius:7px; background:#0b0c0f; border-color:#f6f1e4; overflow:hidden; }
+.slot-player.player-0 .starter-photo { position:absolute; inset:0; width:100%; height:100%; flex:0 0 auto; background:#0b0c0f; z-index:0; }
+.slot-player.player-0 .starter-photo:after { content:""; position:absolute; inset:auto 0 0; height:34%; background:linear-gradient(transparent,#0b0c0fcc 48%,#0b0c0f); }
+.slot-player.player-0 .starter-photo img { width:100%; height:100%; object-fit:cover; object-position:center; transform:none; background:#0b0c0f; }
+.slot-player.player-0 .slot-name-row { position:absolute; left:5px; right:5px; bottom:5px; z-index:1; min-height:18px; justify-content:flex-start; gap:4px; padding:0; background:transparent; border-top:0; }
+.slot-player.player-0 .slot-name-row>span { font-size:8px; color:var(--cream); text-shadow:0 1px 3px #000; }
+.slot-player.player-0 b { width:17px; height:17px; flex-basis:17px; font-size:8px; box-shadow:0 1px 4px #0006; }
 @media (max-width:700px) {
-  .position-slot.filled { min-width:70px; }
-  .slot-player.player-0 { width:66px; min-height:92px; }
-  .slot-player.player-0 .starter-photo { height:66px; flex-basis:66px; }
+  .position-slot.filled { min-width:66px; }
+  .slot-player.player-0 { width:60px; }
 }
 @media (max-width:420px) {
-  .position-slot.filled { min-width:66px; }
-  .slot-player.player-0 { width:62px; min-height:88px; }
-  .slot-player.player-0 .starter-photo { height:63px; flex-basis:63px; }
+  .position-slot.filled { min-width:62px; }
+  .slot-player.player-0 { width:56px; }
 }
 
 /* News cards: keep mobile cards compact and readable */
