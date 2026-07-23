@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/components/auth-context";
 import { useTeam } from "@/components/team-context";
 import { useNews } from "@/components/news-context";
+import MatchAdminEditor from "@/components/match-admin-editor";
 import { NewsItem } from "@/lib/news";
 import { ADMIN_PROFILE, Player } from "@/lib/team";
 
@@ -16,7 +17,7 @@ export default function AdminPage() {
   const { session } = useAuth();
   const { players, updatePlayer } = useTeam();
   const { news, refresh, saveNews, createNews, deleteNews } = useNews();
-  const [section, setSection] = useState<"players" | "news">("players");
+  const [section, setSection] = useState<"players" | "news" | "matches">("players");
   const [selected, setSelected] = useState<Player | null>(null);
   const [selectedNews, setSelectedNews] = useState<NewsItem | null>(null);
   const [saved, setSaved] = useState(false);
@@ -87,10 +88,11 @@ export default function AdminPage() {
 
     {isAdmin && <div className="admin-tabs">
       <button className={section === "players" ? "active" : ""} onClick={() => setSection("players")}>Jugadores</button>
+      <button className={section === "matches" ? "active" : ""} onClick={() => setSection("matches")}>Partidos</button>
       <button className={section === "news" ? "active" : ""} onClick={() => setSection("news")}>Noticias</button>
     </div>}
 
-    {section === "players" && isAdmin ? <div className="admin-layout">
+    {section === "matches" && isAdmin ? <MatchAdminEditor players={players} /> : section === "players" && isAdmin ? <div className="admin-layout">
       <div className="admin-player-list">
         {players.map((player) => <button className={selected?.id === player.id ? "admin-player active" : "admin-player"} onClick={() => { setSelected(player); setSaved(false); setPhotoStatus(""); revealEditPanel(); }} key={player.id}>
           <span className="player-avatar">{player.name.slice(0, 1)}</span>

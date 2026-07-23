@@ -57,11 +57,15 @@ async function initializeDatabase() {
     await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('news_seed_cleanup_20260723','1')");
   }
   await database.exec(`CREATE TABLE IF NOT EXISTS matches (id TEXT PRIMARY KEY, opponent TEXT NOT NULL, opponentShort TEXT NOT NULL, date TEXT NOT NULL, competition TEXT NOT NULL, venue TEXT NOT NULL, status TEXT NOT NULL, homeScore INTEGER, awayScore INTEGER, starters TEXT NOT NULL, substitutes TEXT NOT NULL, events TEXT NOT NULL, updated_at TEXT NOT NULL)`);
-  const matchStatement = await database.prepare("INSERT OR IGNORE INTO matches (id,opponent,opponentShort,date,competition,venue,status,homeScore,awayScore,starters,substitutes,events,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))");
-  for (const match of initialMatches) await matchStatement.run(match.id, match.opponent, match.opponentShort, match.date, match.competition, match.venue, match.status, match.homeScore, match.awayScore, JSON.stringify(match.starters), JSON.stringify(match.substitutes), JSON.stringify(match.events));
-  await matchStatement.finalize();
-  const matchUpdateStatement = await database.prepare("UPDATE matches SET opponent=?, opponentShort=?, date=?, competition=?, venue=?, status=?, homeScore=?, awayScore=?, starters=?, substitutes=?, events=?, updated_at=datetime('now') WHERE id=?");
-  for (const match of initialMatches) await matchUpdateStatement.run(match.opponent, match.opponentShort, match.date, match.competition, match.venue, match.status, match.homeScore, match.awayScore, JSON.stringify(match.starters), JSON.stringify(match.substitutes), JSON.stringify(match.events), match.id);
-  await matchUpdateStatement.finalize();
+  const matchesSeeded = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='matches_seeded_once'");
+  const matchCount = await database.get<{ count: number }>("SELECT COUNT(*) as count FROM matches");
+  if (!matchesSeeded) {
+    if (!matchCount?.count) {
+      const matchStatement = await database.prepare("INSERT INTO matches (id,opponent,opponentShort,date,competition,venue,status,homeScore,awayScore,starters,substitutes,events,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))");
+      for (const match of initialMatches) await matchStatement.run(match.id, match.opponent, match.opponentShort, match.date, match.competition, match.venue, match.status, match.homeScore, match.awayScore, JSON.stringify(match.starters), JSON.stringify(match.substitutes), JSON.stringify(match.events));
+      await matchStatement.finalize();
+    }
+    await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('matches_seeded_once','1')");
+  }
   return database;
 }
