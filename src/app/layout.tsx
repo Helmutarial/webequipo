@@ -5,6 +5,7 @@ import { AuthProvider } from "@/components/auth-context";
 import { TeamProvider } from "@/components/team-context";
 import { NewsProvider } from "@/components/news-context";
 import { MatchesProvider } from "@/components/matches-context";
+import { UsersProvider } from "@/components/users-context";
 
 export const metadata: Metadata = {
   title: "Aldapan Gora | Equipo de fútbol",
@@ -18,7 +19,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="es">
-      <body><AuthProvider><TeamProvider><NewsProvider><MatchesProvider><SiteNav />{children}</MatchesProvider></NewsProvider></TeamProvider></AuthProvider></body>
+      <body><AuthProvider><TeamProvider><NewsProvider><MatchesProvider><UsersProvider><SiteNav />{children}</UsersProvider></MatchesProvider></NewsProvider></TeamProvider></AuthProvider></body>
     </html>
   );
 }

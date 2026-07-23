@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth-context";
@@ -34,7 +35,7 @@ export default function LoginPage() {
         {error && <small className="form-error">{error}</small>}
         <button className="primary-button" type="submit">Entrar al panel ↗</button>
       </form>
-      <small className="auth-note">Acceso privado para administracion y edicion de noticias.</small>
+      <small className="auth-note">¿Eres jugador y no tienes cuenta? <Link href="/crear-cuenta">Crear cuenta</Link></small>
     </div>
   </main>;
 }
