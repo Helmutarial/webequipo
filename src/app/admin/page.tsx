@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/components/auth-context";
 import { useTeam } from "@/components/team-context";
 import { useNews } from "@/components/news-context";
@@ -20,6 +20,7 @@ export default function AdminPage() {
   const [selected, setSelected] = useState<Player | null>(null);
   const [selectedNews, setSelectedNews] = useState<NewsItem | null>(null);
   const [saved, setSaved] = useState(false);
+  const editPanelRef = useRef<HTMLElement | null>(null);
 
   const isAdmin = session?.role === "ADMIN" || session?.email === ADMIN_PROFILE.email;
   const isNewsEditor = session?.role === "NEWS_EDITOR";
@@ -42,6 +43,10 @@ export default function AdminPage() {
       updatePlayer(selected);
       setSaved(true);
     }
+  };
+
+  const revealEditPanel = () => {
+    window.setTimeout(() => editPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
   };
 
   const updateSelected = (field: keyof Player, value: string | number) => setSelected((current) => current ? { ...current, [field]: value } : current);
@@ -70,13 +75,13 @@ export default function AdminPage() {
 
     {section === "players" && isAdmin ? <div className="admin-layout">
       <div className="admin-player-list">
-        {players.map((player) => <button className={selected?.id === player.id ? "admin-player active" : "admin-player"} onClick={() => { setSelected(player); setSaved(false); }} key={player.id}>
+        {players.map((player) => <button className={selected?.id === player.id ? "admin-player active" : "admin-player"} onClick={() => { setSelected(player); setSaved(false); revealEditPanel(); }} key={player.id}>
           <span className="player-avatar">{player.name.slice(0, 1)}</span>
           <span><strong>{player.name}</strong><small>{player.number ? `#${player.number}` : "Sin dorsal"} - {player.position}</small></span>
           <b>Editar</b>
         </button>)}
       </div>
-      {selected ? <section className="edit-card">
+      {selected ? <section className="edit-card" ref={editPanelRef}>
         <span className="section-label">EDITANDO JUGADOR</span>
         <h2>{selected.name}</h2>
         <div className="edit-grid">
@@ -99,14 +104,14 @@ export default function AdminPage() {
       </section> : <section className="edit-empty"><span>←</span><p>Selecciona un jugador para editar su ficha.</p></section>}
     </div> : <div className="admin-layout news-admin-layout">
       {isAdmin && <div className="admin-player-list news-list">
-        <button className="save-button news-new-button" onClick={() => setSelectedNews(blankNews())}>+ Nueva noticia</button>
-        {news.map((item) => <button className={selectedNews?.id === item.id ? "admin-player active" : "admin-player"} onClick={() => setSelectedNews(item)} key={item.id}>
+        <button className="save-button news-new-button" onClick={() => { setSelectedNews(blankNews()); revealEditPanel(); }}>+ Nueva noticia</button>
+        {news.map((item) => <button className={selectedNews?.id === item.id ? "admin-player active" : "admin-player"} onClick={() => { setSelectedNews(item); revealEditPanel(); }} key={item.id}>
           <span className="player-avatar">{item.title.slice(0, 1)}</span>
           <span><strong>{item.title}</strong><small>{item.published ? "Publicada" : "Borrador"} - {item.date}</small></span>
           <b>Editar</b>
         </button>)}
       </div>}
-      {selectedNews ? <section className="edit-card">
+      {selectedNews ? <section className="edit-card" ref={editPanelRef}>
         <span className="section-label">{selectedNews.id ? "EDITANDO NOTICIA" : "NUEVA NOTICIA"}</span>
         <h2>{selectedNews.id ? selectedNews.title : "Nueva noticia"}</h2>
         <div className="edit-grid">

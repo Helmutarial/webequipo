@@ -50,9 +50,12 @@ async function initializeDatabase() {
   await database.run("UPDATE players SET position='DFC / LI / LD' WHERE id='carlos'");
   await database.run("UPDATE players SET name='Molina', alias='Molina', position='MC / MCD' WHERE id='molinpower'");
   await database.exec(`CREATE TABLE IF NOT EXISTS news (id TEXT PRIMARY KEY, title TEXT NOT NULL, slug TEXT NOT NULL UNIQUE, excerpt TEXT NOT NULL DEFAULT '', content TEXT NOT NULL DEFAULT '', tag TEXT NOT NULL DEFAULT 'CLUB', date TEXT NOT NULL, image TEXT NOT NULL DEFAULT '', accent TEXT NOT NULL DEFAULT 'gold', published INTEGER NOT NULL DEFAULT 1, updated_at TEXT NOT NULL)`);
-  const newsStatement = await database.prepare("INSERT OR IGNORE INTO news (id,title,slug,excerpt,content,tag,date,image,accent,published,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,datetime('now'))");
-  for (const item of initialNews) await newsStatement.run(item.id, item.title, item.slug, item.excerpt, item.content, item.tag, item.date, item.image, item.accent, item.published ? 1 : 0);
-  await newsStatement.finalize();
+  await database.exec(`CREATE TABLE IF NOT EXISTS app_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)`);
+  const demoNewsCleanup = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='news_seed_cleanup_20260723'");
+  if (!demoNewsCleanup) {
+    await database.run("DELETE FROM news WHERE id IN (?,?,?)", ...initialNews.map((item) => item.id));
+    await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('news_seed_cleanup_20260723','1')");
+  }
   await database.exec(`CREATE TABLE IF NOT EXISTS matches (id TEXT PRIMARY KEY, opponent TEXT NOT NULL, opponentShort TEXT NOT NULL, date TEXT NOT NULL, competition TEXT NOT NULL, venue TEXT NOT NULL, status TEXT NOT NULL, homeScore INTEGER, awayScore INTEGER, starters TEXT NOT NULL, substitutes TEXT NOT NULL, events TEXT NOT NULL, updated_at TEXT NOT NULL)`);
   const matchStatement = await database.prepare("INSERT OR IGNORE INTO matches (id,opponent,opponentShort,date,competition,venue,status,homeScore,awayScore,starters,substitutes,events,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))");
   for (const match of initialMatches) await matchStatement.run(match.id, match.opponent, match.opponentShort, match.date, match.competition, match.venue, match.status, match.homeScore, match.awayScore, JSON.stringify(match.starters), JSON.stringify(match.substitutes), JSON.stringify(match.events));
