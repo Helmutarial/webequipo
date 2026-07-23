@@ -20,6 +20,7 @@ export default function AdminPage() {
   const [selected, setSelected] = useState<Player | null>(null);
   const [selectedNews, setSelectedNews] = useState<NewsItem | null>(null);
   const [saved, setSaved] = useState(false);
+  const [photoStatus, setPhotoStatus] = useState("");
   const editPanelRef = useRef<HTMLElement | null>(null);
 
   const isAdmin = session?.role === "ADMIN" || session?.email === ADMIN_PROFILE.email;
@@ -51,6 +52,22 @@ export default function AdminPage() {
 
   const updateSelected = (field: keyof Player, value: string | number) => setSelected((current) => current ? { ...current, [field]: value } : current);
   const updateSelectedNews = (field: keyof NewsItem, value: string | boolean) => setSelectedNews((current) => current ? { ...current, [field]: value } : current);
+  const uploadPlayerPhoto = async (file: File) => {
+    if (!selected) return;
+    setPhotoStatus("Subiendo foto...");
+    const formData = new FormData();
+    formData.append("photo", file);
+    const response = await fetch(`/api/players/${selected.id}/photo`, { method: "POST", body: formData });
+    if (!response.ok) {
+      setPhotoStatus("No se ha podido subir la foto.");
+      return;
+    }
+    const result = await response.json();
+    const nextPlayer = { ...selected, photo: result.photo };
+    setSelected(nextPlayer);
+    updatePlayer(nextPlayer);
+    setPhotoStatus("Foto subida.");
+  };
   const saveNewsItem = async () => {
     if (!selectedNews) return;
     if (selectedNews.id && isAdmin) await saveNews(selectedNews);
@@ -75,7 +92,7 @@ export default function AdminPage() {
 
     {section === "players" && isAdmin ? <div className="admin-layout">
       <div className="admin-player-list">
-        {players.map((player) => <button className={selected?.id === player.id ? "admin-player active" : "admin-player"} onClick={() => { setSelected(player); setSaved(false); revealEditPanel(); }} key={player.id}>
+        {players.map((player) => <button className={selected?.id === player.id ? "admin-player active" : "admin-player"} onClick={() => { setSelected(player); setSaved(false); setPhotoStatus(""); revealEditPanel(); }} key={player.id}>
           <span className="player-avatar">{player.name.slice(0, 1)}</span>
           <span><strong>{player.name}</strong><small>{player.number ? `#${player.number}` : "Sin dorsal"} - {player.position}</small></span>
           <b>Editar</b>
@@ -96,7 +113,13 @@ export default function AdminPage() {
           <label>Titularidades<input type="number" value={selected.starterAppearances} onChange={(e) => updateSelected("starterAppearances", Number(e.target.value))} /></label>
           <label>Suplencias<input type="number" value={selected.substituteAppearances} onChange={(e) => updateSelected("substituteAppearances", Number(e.target.value))} /></label>
           <label>MVP conseguidos<input type="number" value={selected.mvpCount} onChange={(e) => updateSelected("mvpCount", Number(e.target.value))} /></label>
-          <label>Foto (URL)<input value={selected.photo} onChange={(e) => updateSelected("photo", e.target.value)} placeholder="https://..." /></label>
+          <div className="photo-upload-field">
+            <span>Foto del jugador</span>
+            <div className="photo-upload-preview">{selected.photo ? <img src={selected.photo} alt={selected.name} /> : <span>{selected.name.slice(0, 1)}</span>}</div>
+            <label className="file-upload-button">Subir foto<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={(e) => { const file = e.target.files?.[0]; if (file) void uploadPlayerPhoto(file); e.currentTarget.value = ""; }} /></label>
+            {selected.photo && <button className="reset-button" type="button" onClick={() => updateSelected("photo", "")}>Quitar foto</button>}
+            {photoStatus && <small>{photoStatus}</small>}
+          </div>
           <label className="full-field">Descripcion<textarea value={selected.bio} onChange={(e) => updateSelected("bio", e.target.value)} /></label>
         </div>
         <button className="save-button" onClick={save}>Guardar cambios</button>
