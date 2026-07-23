@@ -181,6 +181,7 @@ const formations: Record<FormationKey, Position[]> = {
 
 export default function AlignmentBuilder() {
   const { players: teamPlayers } = useTeam();
+  const players = useMemo(() => teamPlayers.filter((player) => player.active).map((player) => ({ id: player.id, name: player.name, number: player.number, position: player.position, initials: player.name.slice(0, 1).toUpperCase() })), [teamPlayers]);
   const [formation, setFormation] = useState<FormationKey>("4-3-3");
   const [lineup, setLineup] = useState<Record<string, string[]>>({});
   const [slotPicker, setSlotPicker] = useState<string | null>(null);

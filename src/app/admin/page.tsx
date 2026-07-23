@@ -11,7 +11,7 @@ import { NewsItem } from "@/lib/news";
 import { ADMIN_PROFILE, Player } from "@/lib/team";
 
 const blankNews = (): NewsItem => ({ id: "", title: "", slug: "", excerpt: "", content: "", tag: "CLUB", date: new Date().toISOString().slice(0, 10), image: "", accent: "gold", published: true });
-const blankPlayer = (): Player => ({ id: "", name: "", alias: "", number: 0, position: "Jugador", photo: "", goals: 0, assists: 0, appearances: 0, minutes: 0, starterAppearances: 0, substituteAppearances: 0, mvpCount: 0, bio: "Jugador del Aldapan Gora." });
+const blankPlayer = (): Player => ({ id: "", name: "", alias: "", number: 0, position: "Jugador", photo: "", goals: 0, assists: 0, appearances: 0, minutes: 0, starterAppearances: 0, substituteAppearances: 0, mvpCount: 0, bio: "Jugador del Aldapan Gora.", active: true });
 
 export default function AdminPage() {
   const router = useRouter();
@@ -61,7 +61,7 @@ export default function AdminPage() {
     window.setTimeout(() => editPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
   };
 
-  const updateSelected = (field: keyof Player, value: string | number) => setSelected((current) => current ? { ...current, [field]: value } : current);
+  const updateSelected = (field: keyof Player, value: string | number | boolean) => setSelected((current) => current ? { ...current, [field]: value } : current);
   const updateSelectedNews = (field: keyof NewsItem, value: string | boolean) => setSelectedNews((current) => current ? { ...current, [field]: value } : current);
   const uploadPlayerPhoto = async (file: File) => {
     if (!selected) return;
@@ -123,9 +123,9 @@ export default function AdminPage() {
     {section === "matches" && isAdmin ? <MatchAdminEditor players={players} /> : section === "players" && isAdmin ? <div className="admin-layout">
       <div className="admin-player-list">
         <button className="save-button news-new-button" onClick={() => { setSelected(blankPlayer()); setSaved(false); setPhotoStatus(""); revealEditPanel(); }}>+ Nuevo jugador</button>
-        {players.map((player) => <button className={selected?.id === player.id ? "admin-player active" : "admin-player"} onClick={() => { setSelected(player); setSaved(false); setPhotoStatus(""); revealEditPanel(); }} key={player.id}>
+        {players.map((player) => <button className={`${selected?.id === player.id ? "admin-player active" : "admin-player"} ${player.active ? "" : "inactive-player"}`} onClick={() => { setSelected(player); setSaved(false); setPhotoStatus(""); revealEditPanel(); }} key={player.id}>
           <span className="player-avatar">{player.name.slice(0, 1)}</span>
-          <span><strong>{player.name}</strong><small>{player.number ? `#${player.number}` : "Sin dorsal"} - {player.position}</small></span>
+          <span><strong>{player.name}</strong><small>{player.active ? "Activo" : "Inactivo"} · {player.number ? `#${player.number}` : "Sin dorsal"} - {player.position}</small></span>
           <b>Editar</b>
         </button>)}
       </div>
@@ -144,6 +144,7 @@ export default function AdminPage() {
           <label>Titularidades<input type="number" value={selected.starterAppearances} onChange={(e) => updateSelected("starterAppearances", Number(e.target.value))} /></label>
           <label>Suplencias<input type="number" value={selected.substituteAppearances} onChange={(e) => updateSelected("substituteAppearances", Number(e.target.value))} /></label>
           <label>MVP conseguidos<input type="number" value={selected.mvpCount} onChange={(e) => updateSelected("mvpCount", Number(e.target.value))} /></label>
+          <label className="checkbox-field"><input type="checkbox" checked={selected.active} onChange={(e) => updateSelected("active", e.target.checked)} /> Jugador activo en plantilla</label>
           <div className="photo-upload-field">
             <span>Foto del jugador</span>
             <div className="photo-upload-preview">{selected.photo ? <img src={selected.photo} alt={selected.name} /> : <span>{selected.name.slice(0, 1)}</span>}</div>

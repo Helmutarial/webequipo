@@ -34,18 +34,20 @@ const cleanPlayer = (body: Partial<Player>) => ({
   substituteAppearances: Number(body.substituteAppearances) || 0,
   mvpCount: Number(body.mvpCount) || 0,
   bio: body.bio?.trim() || "Jugador del Aldapan Gora.",
+  active: body.active !== false,
 });
 
 export async function GET() {
   const database = await getDatabase();
-  const players = await database.all("SELECT id,name,alias,number,position,photo,goals,assists,appearances,minutes,starterAppearances,substituteAppearances,mvpCount,bio FROM players ORDER BY CASE WHEN number = 0 THEN 999 ELSE number END ASC");
+  const players = await database.all("SELECT id,name,alias,number,position,photo,goals,assists,appearances,minutes,starterAppearances,substituteAppearances,mvpCount,bio,active FROM players ORDER BY active DESC, CASE WHEN number = 0 THEN 999 ELSE number END ASC");
   const matches = (await database.all("SELECT * FROM matches")).map(parseMatch);
   const matchStats = calculatePlayerStats(matches, players.map((player) => player.id));
   return NextResponse.json(players.map((player) => {
+    const basePlayer = { ...player, active: Boolean(player.active) };
     const computed = matchStats.get(player.id);
-    if (!computed) return player;
+    if (!computed) return basePlayer;
     return {
-      ...player,
+      ...basePlayer,
       goals: Number(player.goals) + computed.goals,
       assists: Number(player.assists) + computed.assists,
       appearances: Number(player.appearances) + computed.appearances,
@@ -62,8 +64,8 @@ export async function PUT(request: NextRequest) {
   const body = await request.json();
   if (!body.id || !body.name) return NextResponse.json({ error: "Faltan datos" }, { status: 400 });
   const database = await getDatabase();
-  await database.run("UPDATE players SET name=?, alias=?, number=?, position=?, photo=?, goals=?, assists=?, appearances=?, minutes=?, starterAppearances=?, substituteAppearances=?, mvpCount=?, bio=?, updated_at=datetime('now') WHERE id=?", body.name, body.alias ?? "", Number(body.number) || 0, body.position ?? "Jugador", body.photo ?? "", Number(body.goals) || 0, Number(body.assists) || 0, Number(body.appearances) || 0, Number(body.minutes) || 0, Number(body.starterAppearances) || 0, Number(body.substituteAppearances) || 0, Number(body.mvpCount) || 0, body.bio ?? "", body.id);
-  return NextResponse.json({ ...body });
+  await database.run("UPDATE players SET name=?, alias=?, number=?, position=?, photo=?, goals=?, assists=?, appearances=?, minutes=?, starterAppearances=?, substituteAppearances=?, mvpCount=?, bio=?, active=?, updated_at=datetime('now') WHERE id=?", body.name, body.alias ?? "", Number(body.number) || 0, body.position ?? "Jugador", body.photo ?? "", Number(body.goals) || 0, Number(body.assists) || 0, Number(body.appearances) || 0, Number(body.minutes) || 0, Number(body.starterAppearances) || 0, Number(body.substituteAppearances) || 0, Number(body.mvpCount) || 0, body.bio ?? "", body.active === false ? 0 : 1, body.id);
+  return NextResponse.json({ ...body, active: body.active !== false });
 }
 
 export async function POST(request: NextRequest) {
@@ -71,7 +73,7 @@ export async function POST(request: NextRequest) {
   const player = cleanPlayer(await request.json());
   if (!player.name) return NextResponse.json({ error: "El nombre es obligatorio" }, { status: 400 });
   const database = await getDatabase();
-  await database.run("INSERT INTO players (id,name,alias,number,position,photo,goals,assists,appearances,minutes,starterAppearances,substituteAppearances,mvpCount,bio,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))", player.id, player.name, player.alias, player.number, player.position, player.photo, player.goals, player.assists, player.appearances, player.minutes, player.starterAppearances, player.substituteAppearances, player.mvpCount, player.bio);
+  await database.run("INSERT INTO players (id,name,alias,number,position,photo,goals,assists,appearances,minutes,starterAppearances,substituteAppearances,mvpCount,bio,active,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))", player.id, player.name, player.alias, player.number, player.position, player.photo, player.goals, player.assists, player.appearances, player.minutes, player.starterAppearances, player.substituteAppearances, player.mvpCount, player.bio, player.active ? 1 : 0);
   return NextResponse.json(player, { status: 201 });
 }
 
