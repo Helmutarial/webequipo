@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useMatches } from "@/components/matches-context";
 import { Match, MatchEvent } from "@/lib/matches";
+import { calculateMatchMinutes } from "@/lib/player-stats";
 import { Player } from "@/lib/team";
 
 const blankMatch = (): Match => ({
@@ -14,6 +15,7 @@ const blankMatch = (): Match => ({
   competition: "Amistoso",
   venue: "Campo Municipal - Gora",
   status: "upcoming",
+  duration: 90,
   homeScore: null,
   awayScore: null,
   starters: [],
@@ -30,6 +32,7 @@ export default function MatchAdminEditor({ players }: { players: Player[] }) {
   const [eventDraft, setEventDraft] = useState({ minute: "0", scorer: "", assist: "", subIn: "", subOut: "", mvp: "" });
   const editRef = useRef<HTMLElement | null>(null);
   const playerIds = new Set(players.map((player) => player.id));
+  const activePlayers = players.filter((player) => player.active);
   const playerName = (id: string) => players.find((player) => player.id === id)?.name || id;
   const reveal = () => window.setTimeout(() => editRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
 
@@ -99,6 +102,14 @@ export default function MatchAdminEditor({ players }: { players: Player[] }) {
   const liveHomeGoals = selected?.events.filter((event) => event.type === "goal" && playerIds.has(event.player)).length ?? 0;
   const liveAwayGoals = selected?.events.filter((event) => event.type === "goal" && !playerIds.has(event.player)).length ?? 0;
   const usedSubstitutes = selected?.events.filter((event) => event.type === "substitution").length ?? 0;
+  const selectedMinutes = selected ? calculateMatchMinutes(selected, players.map((player) => player.id)) : [];
+  const selectedPlayerOptions = selected ? [...new Set([...selected.starters, ...selected.substitutes])] : [];
+  const syncScoreFromEvents = () => setSelected((current) => {
+    if (!current) return current;
+    const homeGoals = current.events.filter((event) => event.type === "goal" && playerIds.has(event.player)).length;
+    const awayGoals = current.events.filter((event) => event.type === "goal" && !playerIds.has(event.player)).length;
+    return { ...current, homeScore: homeGoals, awayScore: awayGoals, status: "finished" };
+  });
 
   return <div className="admin-layout match-admin-layout">
     <div className="admin-player-list news-list">
@@ -121,6 +132,7 @@ export default function MatchAdminEditor({ players }: { players: Player[] }) {
         <label>Competicion<input value={selected.competition} onChange={(event) => update("competition", event.target.value)} /></label>
         <label className="full-field">Campo<input value={selected.venue} onChange={(event) => update("venue", event.target.value)} /></label>
         <label>Estado<select value={selected.status} onChange={(event) => update("status", event.target.value as Match["status"])}><option value="upcoming">Proximo</option><option value="finished">Finalizado</option></select></label>
+        <label>Duracion<input type="number" value={selected.duration || 90} onChange={(event) => update("duration", Math.max(1, Number(event.target.value) || 90))} /></label>
         <label>Goles Aldapan<input type="number" value={selected.homeScore ?? ""} onChange={(event) => update("homeScore", event.target.value === "" ? null : Number(event.target.value))} /></label>
         <label>Goles rival<input type="number" value={selected.awayScore ?? ""} onChange={(event) => update("awayScore", event.target.value === "" ? null : Number(event.target.value))} /></label>
       </div>
@@ -131,12 +143,16 @@ export default function MatchAdminEditor({ players }: { players: Player[] }) {
         <div><strong>{usedSubstitutes}</strong><span>Cambios</span></div>
         <div><strong>{liveHomeGoals} - {liveAwayGoals}</strong><span>Goles en acta</span></div>
       </div>
+      <div className="acta-helper-bar">
+        <button onClick={syncScoreFromEvents}>Actualizar resultado con el acta</button>
+        <button onClick={() => update("status", "finished")}>Marcar finalizado</button>
+      </div>
 
       <div className="match-admin-section">
         <div className="detail-card-heading"><h3>Titulares</h3><span>{selected.starters.length}/11</span></div>
         {selected.starters.length ? <div className="picked-player-list">{selected.starters.map((playerId, index) => <button onClick={() => removePickedPlayer("starters", playerId)} key={playerId}><b>{index + 1}</b>{playerName(playerId)}<span>×</span></button>)}</div> : null}
         <div className="player-pick-grid">
-          {players.map((player) => <button className={selected.starters.includes(player.id) ? "player-pick active" : "player-pick"} onClick={() => togglePlayer("starters", player.id)} key={player.id}>#{player.number || "-"} {player.name}</button>)}
+          {activePlayers.map((player) => <button className={selected.starters.includes(player.id) ? "player-pick active" : "player-pick"} onClick={() => togglePlayer("starters", player.id)} key={player.id}>#{player.number || "-"} {player.name}</button>)}
         </div>
       </div>
 
@@ -144,7 +160,7 @@ export default function MatchAdminEditor({ players }: { players: Player[] }) {
         <div className="detail-card-heading"><h3>Suplentes</h3><span>{selected.substitutes.length}</span></div>
         {selected.substitutes.length ? <div className="picked-player-list bench-picks">{selected.substitutes.map((playerId) => <button onClick={() => removePickedPlayer("substitutes", playerId)} key={playerId}>SUP {playerName(playerId)}<span>×</span></button>)}</div> : null}
         <div className="player-pick-grid">
-          {players.map((player) => <button className={selected.substitutes.includes(player.id) ? "player-pick active" : "player-pick"} onClick={() => togglePlayer("substitutes", player.id)} key={player.id}>#{player.number || "-"} {player.name}</button>)}
+          {activePlayers.map((player) => <button className={selected.substitutes.includes(player.id) ? "player-pick active" : "player-pick"} onClick={() => togglePlayer("substitutes", player.id)} key={player.id}>#{player.number || "-"} {player.name}</button>)}
         </div>
       </div>
 
@@ -161,8 +177,8 @@ export default function MatchAdminEditor({ players }: { players: Player[] }) {
             <h4>Gol</h4>
             <p>Elige goleador y, si quieres, asistente.</p>
             <div className="visual-acta-columns">
-              <div><span>Goleador</span><div className="mini-player-grid">{[...selected.starters, ...selected.substitutes].map((playerId) => <button className={eventDraft.scorer === playerId ? "active" : ""} onClick={() => setEventDraft((current) => ({ ...current, scorer: playerId }))} key={playerId}>{playerName(playerId)}</button>)}</div></div>
-              <div><span>Asistente</span><div className="mini-player-grid">{[...selected.starters, ...selected.substitutes].map((playerId) => <button className={eventDraft.assist === playerId ? "active" : ""} onClick={() => setEventDraft((current) => ({ ...current, assist: current.assist === playerId ? "" : playerId }))} key={playerId}>{playerName(playerId)}</button>)}</div></div>
+              <div><span>Goleador</span><div className="mini-player-grid">{selectedPlayerOptions.map((playerId) => <button className={eventDraft.scorer === playerId ? "active" : ""} onClick={() => setEventDraft((current) => ({ ...current, scorer: playerId }))} key={playerId}>{playerName(playerId)}</button>)}</div></div>
+              <div><span>Asistente</span><div className="mini-player-grid">{selectedPlayerOptions.map((playerId) => <button className={eventDraft.assist === playerId ? "active" : ""} onClick={() => setEventDraft((current) => ({ ...current, assist: current.assist === playerId ? "" : playerId }))} key={playerId}>{playerName(playerId)}</button>)}</div></div>
             </div>
             <div className="visual-acta-actions"><button onClick={() => addGoalDraft(false)}>Añadir gol Aldapan</button><button onClick={() => addGoalDraft(true)}>Gol rival</button></div>
           </div>
@@ -178,7 +194,7 @@ export default function MatchAdminEditor({ players }: { players: Player[] }) {
           <div className="visual-acta-block">
             <h4>MVP</h4>
             <p>Selecciona el jugador del partido.</p>
-            <div className="mini-player-grid">{[...selected.starters, ...selected.substitutes].map((playerId) => <button className={eventDraft.mvp === playerId ? "active" : ""} onClick={() => setEventDraft((current) => ({ ...current, mvp: playerId }))} key={playerId}>{playerName(playerId)}</button>)}</div>
+            <div className="mini-player-grid">{selectedPlayerOptions.map((playerId) => <button className={eventDraft.mvp === playerId ? "active" : ""} onClick={() => setEventDraft((current) => ({ ...current, mvp: playerId }))} key={playerId}>{playerName(playerId)}</button>)}</div>
             <div className="visual-acta-actions"><button onClick={addMvpDraft}>Guardar MVP</button></div>
           </div>
         </div>
@@ -201,6 +217,12 @@ export default function MatchAdminEditor({ players }: { players: Player[] }) {
             <small>{event.minute || 0}' · {eventLabels[event.type]} · {eventSummary(event)}</small>
           </div>)}
           {!selected.events.length && <p className="muted">Todavia no hay eventos. Añade goles, cambios o MVP.</p>}
+        </div>
+        <div className="minutes-preview">
+          <div className="detail-card-heading"><h3>Minutos calculados</h3><span>{selected.duration || 90}' partido</span></div>
+          {selectedMinutes.length ? <div className="minutes-preview-list">{selectedMinutes.map((row) => <div key={row.playerId}>
+            <strong>{playerName(row.playerId)}</strong><span>{row.role} · {row.inMinute}' a {row.outMinute}'</span><b>{row.minutes}'</b>
+          </div>)}</div> : <p className="muted">Añade titulares y cambios para ver minutos automáticamente.</p>}
         </div>
       </div>
 

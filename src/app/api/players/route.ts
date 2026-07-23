@@ -14,6 +14,7 @@ const parseMatch = (row: Record<string, unknown>): Match => ({
   competition: String(row.competition),
   venue: String(row.venue),
   status: row.status === "upcoming" ? "upcoming" : "finished",
+  duration: Number(row.duration || 90),
   homeScore: row.homeScore == null ? null : Number(row.homeScore),
   awayScore: row.awayScore == null ? null : Number(row.awayScore),
   starters: JSON.parse(String(row.starters)),

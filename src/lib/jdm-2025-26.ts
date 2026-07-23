@@ -54,6 +54,7 @@ export const jdmMatches2025: Match[] = rawResults.map((result) => {
     competition: `Liga JDM 2025/26 · Jornada ${result.round}`,
     venue: `${result.venue}${aldapanHome ? "" : " · Aldapan visitante"}`,
     status: "finished",
+    duration: 90,
     homeScore: aldapanHome ? result.homeScore : result.awayScore,
     awayScore: aldapanHome ? result.awayScore : result.homeScore,
     starters: [],

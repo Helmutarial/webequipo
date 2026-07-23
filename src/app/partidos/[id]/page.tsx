@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMatches } from "@/components/matches-context";
 import { useTeam } from "@/components/team-context";
+import { calculateMatchMinutes } from "@/lib/player-stats";
 
 const eventIcon = { goal: "GOL", substitution: "CAM", yellow: "TA", mvp: "MVP" };
 const eventLabel = { goal: "Gol", substitution: "Cambio", yellow: "Tarjeta", mvp: "MVP" };
@@ -23,6 +24,7 @@ export default function MatchPage() {
 
   const goals = match.events.filter((event) => event.type === "goal");
   const substitutions = match.events.filter((event) => event.type === "substitution");
+  const minutes = calculateMatchMinutes(match, players.map((player) => player.id));
   const mvp = match.events.find((event) => event.type === "mvp");
   const substitutionIn = new Map(substitutions.map((event) => [event.player, event.minute]));
   const substitutionOut = new Map(substitutions.map((event) => [event.relatedPlayer, event.minute]));
@@ -36,7 +38,7 @@ export default function MatchPage() {
         <b>{match.homeScore} - {match.awayScore}</b>
         <div><small>{match.opponentShort}</small><strong>{match.opponent}</strong></div>
       </div>
-      <p>{match.venue} - {match.status === "finished" ? "Finalizado" : "Proximo partido"}</p>
+      <p>{match.venue} - {match.status === "finished" ? `Finalizado · ${match.duration || 90}'` : "Proximo partido"}</p>
     </header>
 
     <section className="match-detail-card lineup-overview-card">
@@ -65,6 +67,10 @@ export default function MatchPage() {
           </div>;
         })}
       </div>
+      {minutes.length ? <div className="public-minutes-summary">
+        <h3 className="bench-title">Minutos jugados</h3>
+        <div>{minutes.map((row) => <span key={row.playerId}><b>{playerName(row.playerId)}</b><i>{row.minutes}'</i></span>)}</div>
+      </div> : null}
     </section>
 
     <div className="match-detail-grid">

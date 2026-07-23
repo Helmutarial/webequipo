@@ -15,6 +15,7 @@ export type Match = {
   competition: string;
   venue: string;
   status: "finished" | "upcoming";
+  duration: number;
   homeScore: number | null;
   awayScore: number | null;
   starters: string[];
@@ -32,6 +33,7 @@ export const initialMatches: Match[] = [
     competition: "Amistoso",
     venue: "Campo Municipal - Gora",
     status: "finished",
+    duration: 90,
     homeScore: 3,
     awayScore: 1,
     starters: ["eskuh", "gerardo", "urko", "rey", "ivan", "corisco", "mauro-m", "molinpower", "caspilla", "pedro", "juan-baroffi"],
@@ -55,6 +57,7 @@ export const initialMatches: Match[] = [
     competition: "Liga - Jornada 01",
     venue: "Campo Municipal - Gora",
     status: "finished",
+    duration: 90,
     homeScore: 2,
     awayScore: 2,
     starters: ["eskuh", "mario", "urko", "rey", "dani", "corisco", "mauro-m", "moreno", "anglada", "pedro", "juan-baroffi"],
