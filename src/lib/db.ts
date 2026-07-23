@@ -30,9 +30,12 @@ async function initializeDatabase() {
   await database.run("UPDATE players SET name='Sergio', alias='Sergio' WHERE id='corisco'");
   await database.run("UPDATE players SET name='Martin', alias='Martin' WHERE id='krepox'");
   await database.run("DELETE FROM players WHERE id IN ('zuha','beltran-jr','joaquinho','tono','d-plaza','juanorro','luaces','saul')");
+  await database.run("UPDATE players SET position='DFC' WHERE id IN ('urko','rey')");
+  await database.run("UPDATE players SET position='MD' WHERE id='caspilla'");
+  await database.run("UPDATE players SET position='DFC / MC / MCD' WHERE id='mauro-m'");
   await database.run("UPDATE players SET position='POR' WHERE id='eskuh'");
   await database.run("UPDATE players SET position='DC / MP' WHERE id='juan-baroffi'");
-  await database.run("UPDATE players SET position='Delantero' WHERE id='pedro'");
+  await database.run("UPDATE players SET position='DC' WHERE id='pedro'");
   await database.run("UPDATE players SET position='MI' WHERE id='ortiz'");
   await database.run("UPDATE players SET position='MI / MC' WHERE id='moreno'");
   await database.run("UPDATE players SET position='LD' WHERE id='krepox'");
@@ -41,6 +44,10 @@ async function initializeDatabase() {
   await database.run("UPDATE players SET position='MC / MCD' WHERE id='corisco'");
   await database.run("UPDATE players SET position='DFC / MC / MCD' WHERE id='mario'");
   await database.run("UPDATE players SET position='LI' WHERE id IN ('dani','ivan')");
+  await database.run("UPDATE players SET position='DC / MP / MC' WHERE id='juanjo'");
+  await database.run("UPDATE players SET position='DC / MP' WHERE id='padri'");
+  await database.run("UPDATE players SET position='LD / MD' WHERE id='gerardo'");
+  await database.run("UPDATE players SET position='DFC / LI / LD' WHERE id='carlos'");
   await database.run("UPDATE players SET name='Molina', alias='Molina', position='MC / MCD' WHERE id='molinpower'");
   await database.exec(`CREATE TABLE IF NOT EXISTS news (id TEXT PRIMARY KEY, title TEXT NOT NULL, slug TEXT NOT NULL UNIQUE, excerpt TEXT NOT NULL DEFAULT '', content TEXT NOT NULL DEFAULT '', tag TEXT NOT NULL DEFAULT 'CLUB', date TEXT NOT NULL, image TEXT NOT NULL DEFAULT '', accent TEXT NOT NULL DEFAULT 'gold', published INTEGER NOT NULL DEFAULT 1, updated_at TEXT NOT NULL)`);
   const newsStatement = await database.prepare("INSERT OR IGNORE INTO news (id,title,slug,excerpt,content,tag,date,image,accent,published,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,datetime('now'))");

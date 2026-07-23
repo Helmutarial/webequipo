@@ -48,9 +48,13 @@ const removedPlayerIds = new Set(["zuha", "beltran-jr", "joaquinho", "tono", "d-
 for (let index = initialPlayers.length - 1; index >= 0; index--) if (removedPlayerIds.has(initialPlayers[index].id)) initialPlayers.splice(index, 1);
 
 const positionUpdates: Record<string, { name?: string; alias?: string; position: string }> = {
+  urko: { position: "DFC" },
+  caspilla: { position: "MD" },
+  rey: { position: "DFC" },
+  "mauro-m": { position: "DFC / MC / MCD" },
   eskuh: { position: "POR" },
   "juan-baroffi": { position: "DC / MP" },
-  pedro: { position: "Delantero" },
+  pedro: { position: "DC" },
   ortiz: { position: "MI" },
   moreno: { position: "MI / MC" },
   krepox: { position: "LD" },
@@ -60,6 +64,10 @@ const positionUpdates: Record<string, { name?: string; alias?: string; position:
   mario: { position: "DFC / MC / MCD" },
   dani: { position: "LI" },
   ivan: { position: "LI" },
+  juanjo: { position: "DC / MP / MC" },
+  padri: { position: "DC / MP" },
+  gerardo: { position: "LD / MD" },
+  carlos: { position: "DFC / LI / LD" },
   molinpower: { name: "Molina", alias: "Molina", position: "MC / MCD" },
 };
 for (const player of initialPlayers) {

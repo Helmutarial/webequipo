@@ -47,7 +47,6 @@ for (const player of players) {
   if (player.id === "fj-garcia") { player.name = "Figa"; player.position = "DC"; }
   if (player.id === "eskuh") player.position = "POR";
   if (player.id === "juan-baroffi") player.position = "DC / MP";
-  if (player.id === "pedro") player.position = "Delantero";
   if (player.id === "ortiz") player.position = "MI";
   if (player.id === "moreno") player.position = "MI / MC";
   if (player.id === "krepox") { player.name = "Martin"; player.position = "LD"; }
@@ -55,6 +54,14 @@ for (const player of players) {
   if (player.id === "corisco") { player.name = "Sergio"; player.position = "MC / MCD"; }
   if (player.id === "mario") player.position = "DFC / MC / MCD";
   if (player.id === "dani" || player.id === "ivan") player.position = "LI";
+  if (player.id === "urko" || player.id === "rey") player.position = "DFC";
+  if (player.id === "caspilla") player.position = "MD";
+  if (player.id === "mauro-m") player.position = "DFC / MC / MCD";
+  if (player.id === "pedro") player.position = "DC";
+  if (player.id === "juanjo") player.position = "DC / MP / MC";
+  if (player.id === "padri") player.position = "DC / MP";
+  if (player.id === "gerardo") player.position = "LD / MD";
+  if (player.id === "carlos") player.position = "DFC / LI / LD";
 }
 
 const formations: Record<FormationKey, Position[]> = {
