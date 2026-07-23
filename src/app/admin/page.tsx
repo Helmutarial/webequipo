@@ -22,6 +22,7 @@ export default function AdminPage() {
   const [selectedNews, setSelectedNews] = useState<NewsItem | null>(null);
   const [saved, setSaved] = useState(false);
   const [photoStatus, setPhotoStatus] = useState("");
+  const [newsImageStatus, setNewsImageStatus] = useState("");
   const editPanelRef = useRef<HTMLElement | null>(null);
 
   const isAdmin = session?.role === "ADMIN" || session?.email === ADMIN_PROFILE.email;
@@ -68,6 +69,20 @@ export default function AdminPage() {
     setSelected(nextPlayer);
     updatePlayer(nextPlayer);
     setPhotoStatus("Foto subida.");
+  };
+  const uploadNewsImage = async (file: File) => {
+    if (!selectedNews) return;
+    setNewsImageStatus("Subiendo imagen...");
+    const formData = new FormData();
+    formData.append("image", file);
+    const response = await fetch("/api/news/image", { method: "POST", body: formData });
+    if (!response.ok) {
+      setNewsImageStatus("No se ha podido subir la imagen.");
+      return;
+    }
+    const result = await response.json();
+    setSelectedNews({ ...selectedNews, image: result.image });
+    setNewsImageStatus("Imagen subida.");
   };
   const saveNewsItem = async () => {
     if (!selectedNews) return;
@@ -129,8 +144,8 @@ export default function AdminPage() {
       </section> : <section className="edit-empty"><span>←</span><p>Selecciona un jugador para editar su ficha.</p></section>}
     </div> : <div className="admin-layout news-admin-layout">
       {isAdmin && <div className="admin-player-list news-list">
-        <button className="save-button news-new-button" onClick={() => { setSelectedNews(blankNews()); revealEditPanel(); }}>+ Nueva noticia</button>
-        {news.map((item) => <button className={selectedNews?.id === item.id ? "admin-player active" : "admin-player"} onClick={() => { setSelectedNews(item); revealEditPanel(); }} key={item.id}>
+        <button className="save-button news-new-button" onClick={() => { setSelectedNews(blankNews()); setNewsImageStatus(""); revealEditPanel(); }}>+ Nueva noticia</button>
+        {news.map((item) => <button className={selectedNews?.id === item.id ? "admin-player active" : "admin-player"} onClick={() => { setSelectedNews(item); setNewsImageStatus(""); revealEditPanel(); }} key={item.id}>
           <span className="player-avatar">{item.title.slice(0, 1)}</span>
           <span><strong>{item.title}</strong><small>{item.published ? "Publicada" : "Borrador"} - {item.date}</small></span>
           <b>Editar</b>
@@ -146,7 +161,13 @@ export default function AdminPage() {
           <label>Estilo<select value={selectedNews.accent} onChange={(e) => updateSelectedNews("accent", e.target.value)}><option value="gold">Dorado</option><option value="dark">Oscuro</option><option value="cream">Crema</option></select></label>
           <label className="full-field">Resumen<textarea value={selectedNews.excerpt} onChange={(e) => updateSelectedNews("excerpt", e.target.value)} /></label>
           <label className="full-field">Contenido<textarea rows={8} value={selectedNews.content} onChange={(e) => updateSelectedNews("content", e.target.value)} /></label>
-          <label className="full-field">Imagen (URL)<input value={selectedNews.image} onChange={(e) => updateSelectedNews("image", e.target.value)} placeholder="https://..." /></label>
+          <div className="photo-upload-field news-image-upload full-field">
+            <span>Imagen de la noticia</span>
+            <div className="news-upload-preview">{selectedNews.image ? <img src={selectedNews.image} alt={selectedNews.title || "Imagen de noticia"} /> : <span>IMG</span>}</div>
+            <label className="file-upload-button">Subir imagen<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={(e) => { const file = e.target.files?.[0]; if (file) void uploadNewsImage(file); e.currentTarget.value = ""; }} /></label>
+            {selectedNews.image && <button className="reset-button" type="button" onClick={() => updateSelectedNews("image", "")}>Quitar imagen</button>}
+            {newsImageStatus && <small>{newsImageStatus}</small>}
+          </div>
           <label className="checkbox-field"><input type="checkbox" checked={selectedNews.published} onChange={(e) => updateSelectedNews("published", e.target.checked)} /> Publicar noticia</label>
         </div>
         <button className="save-button" onClick={saveNewsItem}>{selectedNews.id ? "Guardar noticia" : "Crear noticia"}</button>
