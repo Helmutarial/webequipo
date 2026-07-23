@@ -150,7 +150,7 @@ export default function AdminPage() {
           <div className="photo-upload-field">
             <span>Foto del jugador</span>
             <div className="photo-upload-preview">{selected.photo ? <img src={selected.photo} alt={selected.name} /> : <span>{selected.name.slice(0, 1)}</span>}</div>
-            <label className="file-upload-button">Subir foto<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={(e) => { const file = e.target.files?.[0]; if (file) void uploadPlayerPhoto(file); e.currentTarget.value = ""; }} /></label>
+            <label className="file-upload-button">Subir foto<input type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml,.svg" onChange={(e) => { const file = e.target.files?.[0]; if (file) void uploadPlayerPhoto(file); e.currentTarget.value = ""; }} /></label>
             {selected.photo && <button className="reset-button" type="button" onClick={() => updateSelected("photo", "")}>Quitar foto</button>}
             {photoStatus && <small>{photoStatus}</small>}
           </div>
@@ -182,7 +182,7 @@ export default function AdminPage() {
           <div className="photo-upload-field news-image-upload full-field">
             <span>Imagen de la noticia</span>
             <div className="news-upload-preview">{selectedNews.image ? <img src={selectedNews.image} alt={selectedNews.title || "Imagen de noticia"} /> : <span>IMG</span>}</div>
-            <label className="file-upload-button">Subir imagen<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={(e) => { const file = e.target.files?.[0]; if (file) void uploadNewsImage(file); e.currentTarget.value = ""; }} /></label>
+            <label className="file-upload-button">Subir imagen<input type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml,.svg" onChange={(e) => { const file = e.target.files?.[0]; if (file) void uploadNewsImage(file); e.currentTarget.value = ""; }} /></label>
             {selectedNews.image && <button className="reset-button" type="button" onClick={() => updateSelectedNews("image", "")}>Quitar imagen</button>}
             {newsImageStatus && <small>{newsImageStatus}</small>}
           </div>

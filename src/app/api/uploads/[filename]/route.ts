@@ -8,6 +8,7 @@ const contentTypes: Record<string, string> = {
   ".png": "image/png",
   ".webp": "image/webp",
   ".gif": "image/gif",
+  ".svg": "image/svg+xml",
 };
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ filename: string }> }) {

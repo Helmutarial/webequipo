@@ -3,13 +3,9 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { canCreateNewsRequest } from "@/lib/auth";
+import { imageExtensions, uploadedImageBuffer } from "@/lib/upload-images";
 
-const allowedTypes: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-  "image/gif": "gif",
-};
+const allowedTypes = imageExtensions;
 
 const maxImageSize = 8 * 1024 * 1024;
 
@@ -25,7 +21,7 @@ export async function POST(request: NextRequest) {
   await fs.mkdir(uploadsDirectory, { recursive: true });
   const extension = allowedTypes[image.type];
   const filename = `news-${randomUUID()}.${extension}`;
-  await fs.writeFile(path.join(uploadsDirectory, filename), Buffer.from(await image.arrayBuffer()));
+  await fs.writeFile(path.join(uploadsDirectory, filename), await uploadedImageBuffer(image));
 
   return NextResponse.json({ image: `/api/uploads/${filename}` });
 }

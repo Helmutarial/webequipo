@@ -117,6 +117,7 @@ h1,h2,h3,p { margin-top:0; } h1,h2,h3 { font-family:'Space Grotesk',sans-serif; 
 .form-success { color:#b7c1ab; }
 .auth-note a { color:var(--gold-light); }
 .signup-card select { border:1px solid var(--line); background:#101115; color:var(--cream); padding:13px; font:inherit; }
+.photo-upload-preview img[src$=".svg"],.news-upload-preview img[src$=".svg"],.team-card-photo img[src$=".svg"],.profile-photo img[src$=".svg"],.news-image img[src$=".svg"],.news-detail-image img[src$=".svg"] { object-fit:contain; background:transparent; }
 .users-admin-card { max-width:none; }
 .users-admin-list { display:grid; gap:12px; margin-top:20px; }
 .user-request { display:grid; grid-template-columns:1fr 170px 170px auto; gap:14px; align-items:center; padding:16px; border:1px solid var(--line); background:#101115; }

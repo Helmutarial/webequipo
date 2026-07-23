@@ -4,13 +4,9 @@ import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { getDatabase } from "@/lib/db";
 import { isAdminRequest } from "@/lib/auth";
+import { imageExtensions, uploadedImageBuffer } from "@/lib/upload-images";
 
-const allowedTypes: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-  "image/gif": "gif",
-};
+const allowedTypes = imageExtensions;
 
 const maxPhotoSize = 5 * 1024 * 1024;
 
@@ -39,7 +35,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const extension = allowedTypes[photo.type];
   const filename = `${id}-${randomUUID()}.${extension}`;
   const filePath = path.join(uploadsDirectory, filename);
-  await fs.writeFile(filePath, Buffer.from(await photo.arrayBuffer()));
+  await fs.writeFile(filePath, await uploadedImageBuffer(photo));
 
   const photoUrl = `/api/uploads/${filename}`;
   await database.run("UPDATE players SET photo=?, updated_at=datetime('now') WHERE id=?", photoUrl, id);
