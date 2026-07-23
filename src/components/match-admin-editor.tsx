@@ -27,6 +27,7 @@ export default function MatchAdminEditor({ players }: { players: Player[] }) {
   const [selected, setSelected] = useState<Match | null>(null);
   const [saved, setSaved] = useState(false);
   const editRef = useRef<HTMLElement | null>(null);
+  const playerIds = new Set(players.map((player) => player.id));
   const playerName = (id: string) => players.find((player) => player.id === id)?.name || id;
   const reveal = () => window.setTimeout(() => editRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
 
@@ -38,8 +39,26 @@ export default function MatchAdminEditor({ players }: { players: Player[] }) {
     return { ...current, [field]: next, [otherField]: current[otherField].filter((id) => id !== playerId) };
   });
   const addEvent = () => setSelected((current) => current ? { ...current, events: [...current.events, { minute: 0, type: "goal", player: players[0]?.id || "", relatedPlayer: "", detail: "Aldapan Gora" }] } : current);
+  const addQuickEvent = (type: MatchEvent["type"]) => setSelected((current) => {
+    if (!current) return current;
+    const firstStarter = current.starters[0] || players[0]?.id || "";
+    const firstSubstitute = current.substitutes[0] || players[0]?.id || "";
+    const event: MatchEvent = type === "substitution"
+      ? { minute: 60, type, player: firstSubstitute, relatedPlayer: firstStarter }
+      : type === "mvp"
+        ? { minute: 90, type, player: firstStarter }
+        : { minute: 0, type, player: firstStarter, relatedPlayer: "", detail: "Aldapan Gora" };
+    return { ...current, events: [...current.events, event] };
+  });
   const updateEvent = <K extends keyof MatchEvent>(index: number, field: K, value: MatchEvent[K]) => setSelected((current) => current ? { ...current, events: current.events.map((event, eventIndex) => eventIndex === index ? { ...event, [field]: value } : event) } : current);
   const removeEvent = (index: number) => setSelected((current) => current ? { ...current, events: current.events.filter((_, eventIndex) => eventIndex !== index) } : current);
+  const removePickedPlayer = (field: "starters" | "substitutes", playerId: string) => setSelected((current) => current ? { ...current, [field]: current[field].filter((id) => id !== playerId) } : current);
+  const eventSummary = (event: MatchEvent) => {
+    if (event.type === "goal") return `${playerName(event.player)}${event.relatedPlayer ? ` · asistencia ${playerName(event.relatedPlayer)}` : ""}`;
+    if (event.type === "substitution") return `${playerName(event.player)} entra por ${playerName(event.relatedPlayer || "")}`;
+    if (event.type === "mvp") return playerName(event.player);
+    return event.detail || playerName(event.player);
+  };
 
   const persist = async () => {
     if (!selected) return;
@@ -49,6 +68,10 @@ export default function MatchAdminEditor({ players }: { players: Player[] }) {
     setSaved(true);
     if (!exists) setSelected(null);
   };
+
+  const liveHomeGoals = selected?.events.filter((event) => event.type === "goal" && playerIds.has(event.player)).length ?? 0;
+  const liveAwayGoals = selected?.events.filter((event) => event.type === "goal" && !playerIds.has(event.player)).length ?? 0;
+  const usedSubstitutes = selected?.events.filter((event) => event.type === "substitution").length ?? 0;
 
   return <div className="admin-layout match-admin-layout">
     <div className="admin-player-list news-list">
@@ -74,8 +97,16 @@ export default function MatchAdminEditor({ players }: { players: Player[] }) {
         <label>Goles rival<input type="number" value={selected.awayScore ?? ""} onChange={(event) => update("awayScore", event.target.value === "" ? null : Number(event.target.value))} /></label>
       </div>
 
+      <div className="match-live-summary">
+        <div><strong>{selected.starters.length}</strong><span>Titulares</span></div>
+        <div><strong>{selected.substitutes.length}</strong><span>Suplentes</span></div>
+        <div><strong>{usedSubstitutes}</strong><span>Cambios</span></div>
+        <div><strong>{liveHomeGoals} - {liveAwayGoals}</strong><span>Goles en acta</span></div>
+      </div>
+
       <div className="match-admin-section">
         <div className="detail-card-heading"><h3>Titulares</h3><span>{selected.starters.length}/11</span></div>
+        {selected.starters.length ? <div className="picked-player-list">{selected.starters.map((playerId, index) => <button onClick={() => removePickedPlayer("starters", playerId)} key={playerId}><b>{index + 1}</b>{playerName(playerId)}<span>×</span></button>)}</div> : null}
         <div className="player-pick-grid">
           {players.map((player) => <button className={selected.starters.includes(player.id) ? "player-pick active" : "player-pick"} onClick={() => togglePlayer("starters", player.id)} key={player.id}>#{player.number || "-"} {player.name}</button>)}
         </div>
@@ -83,13 +114,19 @@ export default function MatchAdminEditor({ players }: { players: Player[] }) {
 
       <div className="match-admin-section">
         <div className="detail-card-heading"><h3>Suplentes</h3><span>{selected.substitutes.length}</span></div>
+        {selected.substitutes.length ? <div className="picked-player-list bench-picks">{selected.substitutes.map((playerId) => <button onClick={() => removePickedPlayer("substitutes", playerId)} key={playerId}>SUP {playerName(playerId)}<span>×</span></button>)}</div> : null}
         <div className="player-pick-grid">
           {players.map((player) => <button className={selected.substitutes.includes(player.id) ? "player-pick active" : "player-pick"} onClick={() => togglePlayer("substitutes", player.id)} key={player.id}>#{player.number || "-"} {player.name}</button>)}
         </div>
       </div>
 
       <div className="match-admin-section">
-        <div className="detail-card-heading"><h3>Eventos</h3><button className="text-action" onClick={addEvent}>+ Añadir evento</button></div>
+        <div className="detail-card-heading"><h3>Eventos</h3><button className="text-action" onClick={addEvent}>+ Evento manual</button></div>
+        <div className="quick-event-actions">
+          <button onClick={() => addQuickEvent("goal")}>+ Gol Aldapan</button>
+          <button onClick={() => addQuickEvent("substitution")}>+ Cambio</button>
+          <button onClick={() => addQuickEvent("mvp")}>+ MVP</button>
+        </div>
         <div className="event-editor-list">
           {selected.events.map((event, index) => <div className="event-editor-row" key={index}>
             <input type="number" value={event.minute} onChange={(change) => updateEvent(index, "minute", Number(change.target.value))} placeholder="min" />
@@ -106,6 +143,7 @@ export default function MatchAdminEditor({ players }: { players: Player[] }) {
             </select>
             <input value={event.detail || ""} onChange={(change) => updateEvent(index, "detail", change.target.value)} placeholder="Detalle" />
             <button className="delete-button compact" onClick={() => removeEvent(index)}>Quitar</button>
+            <small>{event.minute || 0}' · {eventLabels[event.type]} · {eventSummary(event)}</small>
           </div>)}
           {!selected.events.length && <p className="muted">Todavia no hay eventos. Añade goles, cambios o MVP.</p>}
         </div>
