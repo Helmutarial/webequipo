@@ -11,11 +11,12 @@ import { NewsItem } from "@/lib/news";
 import { ADMIN_PROFILE, Player } from "@/lib/team";
 
 const blankNews = (): NewsItem => ({ id: "", title: "", slug: "", excerpt: "", content: "", tag: "CLUB", date: new Date().toISOString().slice(0, 10), image: "", accent: "gold", published: true });
+const blankPlayer = (): Player => ({ id: "", name: "", alias: "", number: 0, position: "Jugador", photo: "", goals: 0, assists: 0, appearances: 0, minutes: 0, starterAppearances: 0, substituteAppearances: 0, mvpCount: 0, bio: "Jugador del Aldapan Gora." });
 
 export default function AdminPage() {
   const router = useRouter();
   const { session } = useAuth();
-  const { players, updatePlayer } = useTeam();
+  const { players, updatePlayer, createPlayer, deletePlayer } = useTeam();
   const { news, refresh, saveNews, createNews, deleteNews } = useNews();
   const [section, setSection] = useState<"players" | "news" | "matches">("players");
   const [selected, setSelected] = useState<Player | null>(null);
@@ -41,9 +42,17 @@ export default function AdminPage() {
 
   if (!session) return null;
 
-  const save = () => {
+  const save = async () => {
     if (isAdmin && selected) {
-      updatePlayer(selected);
+      if (!selected.name.trim()) {
+        setPhotoStatus("El nombre del jugador es obligatorio.");
+        return;
+      }
+      if (selected.id) await updatePlayer(selected);
+      else {
+        const created = await createPlayer(selected);
+        if (created) setSelected(created);
+      }
       setSaved(true);
     }
   };
@@ -56,6 +65,10 @@ export default function AdminPage() {
   const updateSelectedNews = (field: keyof NewsItem, value: string | boolean) => setSelectedNews((current) => current ? { ...current, [field]: value } : current);
   const uploadPlayerPhoto = async (file: File) => {
     if (!selected) return;
+    if (!selected.id) {
+      setPhotoStatus("Guarda el jugador antes de subir foto.");
+      return;
+    }
     setPhotoStatus("Subiendo foto...");
     const formData = new FormData();
     formData.append("photo", file);
@@ -109,6 +122,7 @@ export default function AdminPage() {
 
     {section === "matches" && isAdmin ? <MatchAdminEditor players={players} /> : section === "players" && isAdmin ? <div className="admin-layout">
       <div className="admin-player-list">
+        <button className="save-button news-new-button" onClick={() => { setSelected(blankPlayer()); setSaved(false); setPhotoStatus(""); revealEditPanel(); }}>+ Nuevo jugador</button>
         {players.map((player) => <button className={selected?.id === player.id ? "admin-player active" : "admin-player"} onClick={() => { setSelected(player); setSaved(false); setPhotoStatus(""); revealEditPanel(); }} key={player.id}>
           <span className="player-avatar">{player.name.slice(0, 1)}</span>
           <span><strong>{player.name}</strong><small>{player.number ? `#${player.number}` : "Sin dorsal"} - {player.position}</small></span>
@@ -116,8 +130,8 @@ export default function AdminPage() {
         </button>)}
       </div>
       {selected ? <section className="edit-card" ref={editPanelRef}>
-        <span className="section-label">EDITANDO JUGADOR</span>
-        <h2>{selected.name}</h2>
+        <span className="section-label">{selected.id ? "EDITANDO JUGADOR" : "NUEVO JUGADOR"}</span>
+        <h2>{selected.name || "Nuevo jugador"}</h2>
         <div className="edit-grid">
           <label>Nombre<input value={selected.name} onChange={(e) => updateSelected("name", e.target.value)} /></label>
           <label>Alias<input value={selected.alias} onChange={(e) => updateSelected("alias", e.target.value)} /></label>
@@ -139,7 +153,8 @@ export default function AdminPage() {
           </div>
           <label className="full-field">Descripcion<textarea value={selected.bio} onChange={(e) => updateSelected("bio", e.target.value)} /></label>
         </div>
-        <button className="save-button" onClick={save}>Guardar cambios</button>
+        <button className="save-button" onClick={save}>{selected.id ? "Guardar cambios" : "Crear jugador"}</button>
+        {selected.id && <button className="delete-button" onClick={async () => { if (!confirm(`¿Eliminar a ${selected.name}? Se quitará también de partidos y alineaciones guardadas.`)) return; await deletePlayer(selected.id); setSelected(null); }}>Eliminar jugador</button>}
         {saved && <span className="saved-notice">Cambios guardados.</span>}
       </section> : <section className="edit-empty"><span>←</span><p>Selecciona un jugador para editar su ficha.</p></section>}
     </div> : <div className="admin-layout news-admin-layout">
