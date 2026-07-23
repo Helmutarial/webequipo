@@ -1,19 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDatabase } from "@/lib/db";
-import { isAdminRequest } from "@/lib/auth";
+import { canCreateNewsRequest, isAdminRequest } from "@/lib/auth";
 
 const fields = "id,title,slug,excerpt,content,tag,date,image,accent,published";
 const mapNews = (item: Record<string, unknown>) => ({ ...item, published: Boolean(item.published) });
 
 export async function GET(request: NextRequest) {
   const database = await getDatabase();
-  const includeDrafts = request.nextUrl.searchParams.get("all") === "1" && await isAdminRequest();
+  const includeDrafts = request.nextUrl.searchParams.get("all") === "1" && await canCreateNewsRequest();
   const rows = await database.all(`SELECT ${fields} FROM news ${includeDrafts ? "" : "WHERE published = 1"} ORDER BY date DESC, updated_at DESC`);
   return NextResponse.json(rows.map(mapNews));
 }
 
 export async function POST(request: NextRequest) {
-  if (!(await isAdminRequest())) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+  if (!(await canCreateNewsRequest())) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   const body = await request.json();
   if (!body.title || !body.excerpt || !body.content) return NextResponse.json({ error: "Título, resumen y contenido son obligatorios" }, { status: 400 });
   const database = await getDatabase();

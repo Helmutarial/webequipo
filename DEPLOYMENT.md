@@ -9,6 +9,25 @@ docker compose up -d --build
 docker compose ps
 ```
 
+## Perfil editor de noticias
+
+El editor de noticias puede entrar al panel y crear noticias nuevas, pero no puede editar jugadores, borrar noticias ni modificar noticias existentes.
+
+En el servidor, editar `/opt/aldapan-gora/.env` y anadir:
+
+```env
+NEWS_EDITOR_EMAIL="correo-del-companero@example.com"
+NEWS_EDITOR_NAME="Nombre del companero"
+NEWS_EDITOR_PASSWORD="contrasena-segura"
+```
+
+Despues aplicar cambios:
+
+```bash
+cd /opt/aldapan-gora
+docker compose up -d --build
+```
+
 ## Comprobar salud
 
 ```bash

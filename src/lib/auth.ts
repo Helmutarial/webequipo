@@ -1,29 +1,61 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
-import { ADMIN_PROFILE } from "@/lib/team";
+import { ADMIN_PROFILE, Role } from "@/lib/team";
+
+export type SessionProfile = { name: string; email: string; role: Exclude<Role, "USER"> };
 
 const COOKIE_NAME = "aldapan_session";
 const secret = () => process.env.AUTH_SECRET || "local-development-secret-change-me";
 
-export function createSessionToken() {
-  const payload = `${ADMIN_PROFILE.email}.${Date.now()}`;
-  const signature = createHmac("sha256", secret()).update(payload).digest("base64url");
-  return `${Buffer.from(payload).toString("base64url")}.${signature}`;
+export function getNewsEditorProfile(): SessionProfile | null {
+  const email = process.env.NEWS_EDITOR_EMAIL?.trim().toLowerCase();
+  if (!email) return null;
+  return {
+    email,
+    name: process.env.NEWS_EDITOR_NAME?.trim() || "Editor noticias",
+    role: "NEWS_EDITOR",
+  };
 }
 
-export function isValidSessionToken(token: string | undefined) {
-  if (!token) return false;
+export function createSessionToken(profile: SessionProfile = ADMIN_PROFILE) {
+  const payload = JSON.stringify({ email: profile.email, name: profile.name, role: profile.role, issuedAt: Date.now() });
+  const encodedPayload = Buffer.from(payload).toString("base64url");
+  const signature = createHmac("sha256", secret()).update(encodedPayload).digest("base64url");
+  return `${encodedPayload}.${signature}`;
+}
+
+export function getSessionFromToken(token: string | undefined): SessionProfile | null {
+  if (!token) return null;
   const [encodedPayload, signature] = token.split(".");
-  if (!encodedPayload || !signature) return false;
-  const payload = Buffer.from(encodedPayload, "base64url").toString("utf8");
-  const expected = createHmac("sha256", secret()).update(payload).digest("base64url");
-  if (signature.length !== expected.length || !timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return false;
-  return payload.startsWith(`${ADMIN_PROFILE.email}.`);
+  if (!encodedPayload || !signature) return null;
+  const expected = createHmac("sha256", secret()).update(encodedPayload).digest("base64url");
+  if (signature.length !== expected.length || !timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return null;
+
+  try {
+    const payload = JSON.parse(Buffer.from(encodedPayload, "base64url").toString("utf8"));
+    const email = String(payload.email || "").toLowerCase();
+    const role = String(payload.role || "");
+    if (role === "ADMIN" && email === ADMIN_PROFILE.email) return ADMIN_PROFILE;
+    const editor = getNewsEditorProfile();
+    if (role === "NEWS_EDITOR" && editor && email === editor.email) return editor;
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+export async function getRequestSession() {
+  const cookieStore = await cookies();
+  return getSessionFromToken(cookieStore.get(COOKIE_NAME)?.value);
 }
 
 export async function isAdminRequest() {
-  const cookieStore = await cookies();
-  return isValidSessionToken(cookieStore.get(COOKIE_NAME)?.value);
+  return (await getRequestSession())?.role === "ADMIN";
+}
+
+export async function canCreateNewsRequest() {
+  const session = await getRequestSession();
+  return session?.role === "ADMIN" || session?.role === "NEWS_EDITOR";
 }
 
 export const sessionCookie = COOKIE_NAME;

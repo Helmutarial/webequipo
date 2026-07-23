@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { isAdminRequest } from "@/lib/auth";
-import { ADMIN_PROFILE } from "@/lib/team";
+import { getRequestSession } from "@/lib/auth";
 
 export async function GET() {
-  return (await isAdminRequest()) ? NextResponse.json({ session: ADMIN_PROFILE }) : NextResponse.json({ session: null });
+  return NextResponse.json({ session: await getRequestSession() });
 }
