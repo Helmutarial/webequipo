@@ -7,6 +7,7 @@ import { Player } from "@/lib/team";
 
 const parseMatch = (row: Record<string, unknown>): Match => ({
   id: String(row.id),
+  season: String(row.season || "2026/27"),
   opponent: String(row.opponent),
   opponentShort: String(row.opponentShort),
   date: String(row.date),

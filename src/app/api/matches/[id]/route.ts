@@ -6,6 +6,7 @@ import { Match, MatchEvent } from "@/lib/matches";
 const cleanEvents = (events: MatchEvent[] = []) => events.map((event) => ({ minute: Number(event.minute) || 0, type: event.type, player: event.player || "", relatedPlayer: event.relatedPlayer || "", detail: event.detail || "" })).filter((event) => event.type && event.player).sort((a, b) => a.minute - b.minute);
 const cleanMatch = (body: Partial<Match>, id: string): Match => ({
   id,
+  season: body.season || "2026/27",
   opponent: body.opponent?.trim() || "Rival",
   opponentShort: body.opponentShort?.trim().toUpperCase() || "RIV",
   date: body.date || new Date().toISOString().slice(0, 16),
@@ -26,7 +27,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   const { id } = await params;
   const match = cleanMatch(await request.json(), id);
   const database = await getDatabase();
-  await database.run("UPDATE matches SET opponent=?, opponentShort=?, date=?, competition=?, venue=?, status=?, homeScore=?, awayScore=?, starters=?, substitutes=?, events=?, updated_at=datetime('now') WHERE id=?", match.opponent, match.opponentShort, match.date, match.competition, match.venue, match.status, match.homeScore, match.awayScore, JSON.stringify(match.starters), JSON.stringify(match.substitutes), JSON.stringify(match.events), id);
+  await database.run("UPDATE matches SET season=?, opponent=?, opponentShort=?, date=?, competition=?, venue=?, status=?, homeScore=?, awayScore=?, starters=?, substitutes=?, events=?, updated_at=datetime('now') WHERE id=?", match.season, match.opponent, match.opponentShort, match.date, match.competition, match.venue, match.status, match.homeScore, match.awayScore, JSON.stringify(match.starters), JSON.stringify(match.substitutes), JSON.stringify(match.events), id);
   return NextResponse.json(match);
 }
 

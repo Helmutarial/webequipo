@@ -49,6 +49,21 @@ h1,h2,h3,p { margin-top:0; } h1,h2,h3 { font-family:'Space Grotesk',sans-serif; 
 .footer { min-height:130px;display:flex;align-items:center;justify-content:space-between;color:#777981;font-size:11px; }.footer p { margin:0;font:600 16px 'Space Grotesk';color:#c0c0c1; }.footer .brand { color:var(--cream); }
 @media (max-width:800px) { .shell { width:min(100% - 32px, 560px); }.navlinks { display:none; }.menu-button { padding:10px 12px; }.hero { grid-template-columns:1fr;gap:40px;padding:62px 0; }.hero-match { max-width:480px; }.result-inner { flex-wrap:wrap;padding:25px 0; }.result-inner .text-link { margin-left:0;width:100%; }.news-grid,.stats-layout { grid-template-columns:1fr; }.section { padding:65px 0; }.stats-layout { gap:45px; }.footer { flex-wrap:wrap;gap:20px;padding:28px 0; } }
 @media (max-width:800px) { .match-card { grid-template-columns:1fr; gap:16px; }.match-card-date,.match-card-meta { align-items:center; text-align:center; }.match-card-teams div:first-child,.match-card-teams div:last-child { text-align:center; }.match-detail-grid { grid-template-columns:1fr; gap:0; }.match-scoreboard { gap:14px; }.match-scoreboard strong { font-size:15px; }.match-scoreboard>b { font-size:32px; }.scorers-grid,.substitution-list { grid-template-columns:1fr; } }
+.season-selector { display:flex; flex-direction:column; gap:8px; color:#8c8e95; font-size:10px; font-weight:700; letter-spacing:1px; text-transform:uppercase; }
+.season-selector select { min-width:160px; border:1px solid var(--line); background:var(--surface); color:var(--cream); padding:12px; border-radius:0; }
+.season-summary { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin:20px 0 28px; }
+.season-summary div { padding:18px; background:#15171c; border:1px solid var(--line); }
+.season-summary span { display:block; color:#85878e; font-size:9px; letter-spacing:1px; text-transform:uppercase; margin-bottom:8px; }
+.season-summary strong { color:var(--gold-light); font:700 30px 'Space Grotesk'; }
+.standings-card { margin-top:34px; padding:26px; background:var(--surface); border:1px solid var(--line); }
+.standings-table { margin-top:18px; display:grid; }
+.standings-head,.standings-row { display:grid; grid-template-columns:50px 1fr 55px 55px 55px; gap:12px; align-items:center; padding:11px 0; border-bottom:1px solid #292c334d; }
+.standings-head { color:var(--gold-light); font-size:9px; font-weight:700; letter-spacing:1px; text-transform:uppercase; }
+.standings-row { color:#bfc0c3; font-size:11px; }
+.standings-row strong { color:var(--cream); }
+.standings-row b { color:var(--gold-light); }
+.standings-row.highlight { margin-inline:-10px; padding-inline:10px; background:#b49a6a14; }
+@media (max-width:800px) { .season-selector { margin-top:18px; } .season-summary { grid-template-columns:1fr 1fr; } .standings-card { padding:18px; } .standings-head,.standings-row { grid-template-columns:35px 1fr 38px 42px 42px; gap:7px; font-size:10px; } }
 @media (max-width:800px) { .match-live-summary { grid-template-columns:1fr 1fr; }.player-pick-grid { grid-template-columns:repeat(2,1fr); }.quick-event-actions { grid-template-columns:1fr; }.visual-acta-columns { grid-template-columns:1fr; }.mini-player-grid { grid-template-columns:repeat(2,1fr); }.event-editor-row { grid-template-columns:1fr 1fr; }.event-editor-row input:nth-of-type(2),.event-editor-row select:nth-of-type(2),.event-editor-row select:nth-of-type(3) { grid-column:1/-1; }.delete-button.compact { width:100%; } }
 
 .lineup-overview-card { margin-bottom:18px; }.lineup-starters { display:grid; grid-template-columns:repeat(3,1fr); gap:0 18px; }.lineup-list .changed-player { background:#b49a6a10; }.lineup-list span { display:flex; align-items:center; gap:8px; min-width:0; }.change-badge { display:inline-flex; align-items:center; padding:3px 6px; border:1px solid #b49a6a66; color:var(--gold-light); font-style:normal; font-size:8px; line-height:1; white-space:nowrap; }.change-badge.in { border-color:#9fa89488; color:#b7c1ab; }.event-icon { width:31px; border-radius:3px; font-size:8px; font-weight:800; letter-spacing:.5px; }.event-icon.goal { background:#b49a6a; color:var(--black); }.event-icon.substitution { background:#253026; color:#b7c1ab; }.mvp-callout>span { min-width:42px; text-align:center; font:800 11px 'Space Grotesk'; }.opponent-goal { opacity:.68; }

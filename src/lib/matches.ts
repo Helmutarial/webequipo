@@ -8,6 +8,7 @@ export type MatchEvent = {
 
 export type Match = {
   id: string;
+  season: string;
   opponent: string;
   opponentShort: string;
   date: string;
@@ -24,6 +25,7 @@ export type Match = {
 export const initialMatches: Match[] = [
   {
     id: "aldapan-rival-2026-06-15",
+    season: "2026/27",
     opponent: "Atletico Rival",
     opponentShort: "RIV",
     date: "2026-06-15T18:30:00",
@@ -46,6 +48,7 @@ export const initialMatches: Match[] = [
   },
   {
     id: "aldapan-union-2026-06-08",
+    season: "2026/27",
     opponent: "Union Deportiva",
     opponentShort: "UNI",
     date: "2026-06-08T19:00:00",

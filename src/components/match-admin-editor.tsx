@@ -7,6 +7,7 @@ import { Player } from "@/lib/team";
 
 const blankMatch = (): Match => ({
   id: "",
+  season: "2026/27",
   opponent: "",
   opponentShort: "",
   date: new Date().toISOString().slice(0, 16),
@@ -114,6 +115,7 @@ export default function MatchAdminEditor({ players }: { players: Player[] }) {
       <h2>{selected.opponent || "Nuevo partido"}</h2>
       <div className="edit-grid">
         <label>Rival<input value={selected.opponent} onChange={(event) => update("opponent", event.target.value)} /></label>
+        <label>Temporada<input value={selected.season} onChange={(event) => update("season", event.target.value)} placeholder="2025/26" /></label>
         <label>Siglas rival<input maxLength={5} value={selected.opponentShort} onChange={(event) => update("opponentShort", event.target.value)} placeholder="RIV" /></label>
         <label>Fecha y hora<input type="datetime-local" value={selected.date.slice(0, 16)} onChange={(event) => update("date", event.target.value)} /></label>
         <label>Competicion<input value={selected.competition} onChange={(event) => update("competition", event.target.value)} /></label>

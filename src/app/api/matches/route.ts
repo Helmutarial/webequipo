@@ -8,6 +8,7 @@ const slug = (text: string) => text.toLowerCase().normalize("NFD").replace(/[\u0
 const cleanEvents = (events: MatchEvent[] = []) => events.map((event) => ({ minute: Number(event.minute) || 0, type: event.type, player: event.player || "", relatedPlayer: event.relatedPlayer || "", detail: event.detail || "" })).filter((event) => event.type && event.player).sort((a, b) => a.minute - b.minute);
 const cleanMatch = (body: Partial<Match>): Match => ({
   id: body.id || `${slug(body.opponent || "rival")}-${Date.now()}`,
+  season: body.season || "2026/27",
   opponent: body.opponent?.trim() || "Rival",
   opponentShort: body.opponentShort?.trim().toUpperCase() || "RIV",
   date: body.date || new Date().toISOString().slice(0, 16),
@@ -27,6 +28,6 @@ export async function POST(request: NextRequest) {
   if (!(await isAdminRequest())) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   const match = cleanMatch(await request.json());
   const database = await getDatabase();
-  await database.run("INSERT INTO matches (id,opponent,opponentShort,date,competition,venue,status,homeScore,awayScore,starters,substitutes,events,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))", match.id, match.opponent, match.opponentShort, match.date, match.competition, match.venue, match.status, match.homeScore, match.awayScore, JSON.stringify(match.starters), JSON.stringify(match.substitutes), JSON.stringify(match.events));
+  await database.run("INSERT INTO matches (id,season,opponent,opponentShort,date,competition,venue,status,homeScore,awayScore,starters,substitutes,events,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))", match.id, match.season, match.opponent, match.opponentShort, match.date, match.competition, match.venue, match.status, match.homeScore, match.awayScore, JSON.stringify(match.starters), JSON.stringify(match.substitutes), JSON.stringify(match.events));
   return NextResponse.json(match, { status: 201 });
 }
