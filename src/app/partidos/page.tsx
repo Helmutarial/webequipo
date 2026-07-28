@@ -18,10 +18,10 @@ export default function MatchesPage() {
       </div>
     </div>
     <SeasonNav />
-    {loading ? <p className="muted">Cargando partidos…</p> : <div className="matches-list">{matches.map((match) => <Link className="match-card" href={`/partidos/${match.id}`} key={match.id}>
+    {loading ? <p className="muted">Cargando partidos…</p> : <div className="matches-list">{matches.map((match) => <Link className="match-card" href={`/partidos/${encodeURIComponent(match.id)}`} key={match.id} aria-label={`Ver ficha de Aldapan Gora contra ${match.opponent}`}>
       <div className="match-card-date"><span>{formatDate(match.date)}</span><small>{match.competition}</small></div>
       <div className="match-card-teams"><div><b>Aldapan Gora</b><span>ALG</span></div><strong>{match.homeScore} — {match.awayScore}</strong><div><span>{match.opponentShort}</span><b>{match.opponent}</b></div></div>
-      <div className="match-card-meta"><span>{match.status === "finished" ? "FINALIZADO" : "PRÓXIMO"}</span><small>{match.venue}</small><i>Ver ficha →</i></div>
+      <div className="match-card-meta"><span>{match.status === "finished" ? "FINALIZADO" : "PRÓXIMO"}</span><small>{match.venue}</small><strong className="match-card-action">Ver ficha →</strong></div>
     </Link>)}</div>}
   </main>;
 }
