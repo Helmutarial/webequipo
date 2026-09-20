@@ -63,13 +63,19 @@ async function initializeDatabase() {
   }
   await database.run(
     "INSERT OR IGNORE INTO matches (id,season,opponent,opponentShort,date,competition,venue,status,duration,homeScore,awayScore,starters,substitutes,events,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))",
-    "aldapan-atletico-jabalies-2026-09-20", "2026/27", "Atlético Jabalíes", "JAB", "2026-09-20T21:00:00", "Amistoso", "Campo Municipal - Gora", "finished", 90, 4, 0, "[]", "[]", JSON.stringify([{ minute: 0, type: "goal", player: "ortiz", detail: "Aldapan Gora" }, { minute: 0, type: "goal", player: "ortiz", detail: "Aldapan Gora" }, { minute: 0, type: "goal", player: "ortiz", detail: "Aldapan Gora" }, { minute: 0, type: "goal", player: "corisco", detail: "Aldapan Gora" }])
+    "aldapan-atletico-jabalies-2026-09-20", "2026/27", "Atlético Jabalíes", "JAB", "2026-09-20T21:00:00", "Amistoso", "Campo Municipal - Gora", "finished", 90, 4, 0, "[]", "[]", JSON.stringify([{ minute: 0, type: "goal", player: "ortiz", detail: "Aldapan Gora" }, { minute: 0, type: "goal", player: "ortiz", detail: "Aldapan Gora" }, { minute: 0, type: "goal", player: "ortiz", detail: "Aldapan Gora" }, { minute: 0, type: "goal", player: "corisco", detail: "Aldapan Gora" }, { minute: 90, type: "mvp", player: "ortiz" }])
   );
   const jabaliesResultApplied = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='aldapan_jabalies_result_20260920'");
   if (!jabaliesResultApplied) {
-    const events = JSON.stringify([{ minute: 0, type: "goal", player: "ortiz", detail: "Aldapan Gora" }, { minute: 0, type: "goal", player: "ortiz", detail: "Aldapan Gora" }, { minute: 0, type: "goal", player: "ortiz", detail: "Aldapan Gora" }, { minute: 0, type: "goal", player: "corisco", detail: "Aldapan Gora" }]);
+    const events = JSON.stringify([{ minute: 0, type: "goal", player: "ortiz", detail: "Aldapan Gora" }, { minute: 0, type: "goal", player: "ortiz", detail: "Aldapan Gora" }, { minute: 0, type: "goal", player: "ortiz", detail: "Aldapan Gora" }, { minute: 0, type: "goal", player: "corisco", detail: "Aldapan Gora" }, { minute: 90, type: "mvp", player: "ortiz" }]);
     await database.run("UPDATE matches SET status='finished', homeScore=4, awayScore=0, events=?, updated_at=datetime('now') WHERE id=?", events, "aldapan-atletico-jabalies-2026-09-20");
     await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('aldapan_jabalies_result_20260920','1')");
+  }
+  const jabaliesMvpApplied = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='aldapan_jabalies_mvp_20260920'");
+  if (!jabaliesMvpApplied) {
+    const events = JSON.stringify([{ minute: 0, type: "goal", player: "ortiz", detail: "Aldapan Gora" }, { minute: 0, type: "goal", player: "ortiz", detail: "Aldapan Gora" }, { minute: 0, type: "goal", player: "ortiz", detail: "Aldapan Gora" }, { minute: 0, type: "goal", player: "corisco", detail: "Aldapan Gora" }, { minute: 90, type: "mvp", player: "ortiz" }]);
+    await database.run("UPDATE matches SET events=?, updated_at=datetime('now') WHERE id=?", events, "aldapan-atletico-jabalies-2026-09-20");
+    await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('aldapan_jabalies_mvp_20260920','1')");
   }
   return database;
 }

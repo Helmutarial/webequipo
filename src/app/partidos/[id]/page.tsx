@@ -5,10 +5,6 @@ import { useParams } from "next/navigation";
 import { useMatches } from "@/components/matches-context";
 import { useTeam } from "@/components/team-context";
 import { calculateMatchMinutes } from "@/lib/player-stats";
-import MatchMvpVoting from "@/components/match-mvp-voting";
-
-const eventIcon = { goal: "GOL", substitution: "CAM", yellow: "TA", mvp: "MVP" };
-const eventLabel = { goal: "Gol", substitution: "Cambio", yellow: "Tarjeta", mvp: "MVP" };
 const roleByIndex = (index: number) => index === 0 ? "POR" : index < 5 ? "DEF" : index < 8 ? "MED" : "ATA";
 const formatDate = (date: string) => new Date(date).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
@@ -17,7 +13,6 @@ export default function MatchPage() {
   const { matches, loading } = useMatches();
   const { players } = useTeam();
   const match = matches.find((item) => item.id === id);
-  const playerIds = new Set(players.map((player) => player.id));
   const playerName = (playerId: string) => players.find((player) => player.id === playerId)?.name || playerId;
 
   if (loading) return <main className="content-page shell"><p className="muted">Cargando partido...</p></main>;
@@ -27,10 +22,11 @@ export default function MatchPage() {
   const substitutions = match.events.filter((event) => event.type === "substitution");
   const minutes = calculateMatchMinutes(match, players.map((player) => player.id));
   const mvp = match.events.find((event) => event.type === "mvp");
+  const mvpPlayer = mvp ? players.find((player) => player.id === mvp.player) : undefined;
   const substitutionIn = new Map(substitutions.map((event) => [event.player, event.minute]));
   const substitutionOut = new Map(substitutions.map((event) => [event.relatedPlayer, event.minute]));
-  const calledUpIds = new Set([...match.starters, ...match.substitutes]);
-  const votingCandidates = calledUpIds.size ? players.filter((player) => calledUpIds.has(player.id)) : players.filter((player) => player.active);
+  const scorers = [...goals.reduce((summary, goal) => summary.set(goal.player, (summary.get(goal.player) || 0) + 1), new Map<string, number>())];
+  const hasLineup = match.starters.length || match.substitutes.length;
 
   return <main className="content-page shell match-detail">
     <Link className="text-link" href="/partidos">Volver a partidos</Link>
@@ -44,7 +40,7 @@ export default function MatchPage() {
       <p>{match.venue} - {match.status === "finished" ? `Finalizado · ${match.duration || 90}'` : "Proximo partido"}</p>
     </header>
 
-    <section className="match-detail-card lineup-overview-card">
+    {hasLineup ? <section className="match-detail-card lineup-overview-card">
       <div className="detail-card-heading">
         <h2>Alineacion titular</h2>
         <span>{match.starters.length} jugadores</span>
@@ -74,39 +70,15 @@ export default function MatchPage() {
         <h3 className="bench-title">Minutos jugados</h3>
         <div>{minutes.map((row) => <span key={row.playerId}><b>{playerName(row.playerId)}</b><i>{row.minutes}'</i></span>)}</div>
       </div> : null}
+    </section> : null}
+
+    <section className="match-detail-card match-summary-card">
+      <div className="detail-card-heading"><h2>Resumen del partido</h2><span>{goals.length} goles</span></div>
+      <div className="scorer-summary">{scorers.map(([playerId, count]) => <div key={playerId}><strong>{playerName(playerId)}</strong><span>{count === 1 ? "1 gol" : `${count} goles`}</span></div>)}</div>
     </section>
-
-    <div className="match-detail-grid">
-      <section className="match-detail-card">
-        <div className="detail-card-heading"><h2>Eventos del partido</h2><span>{match.events.length} acciones</span></div>
-        <div className="timeline">
-          {match.events.filter((event) => event.type !== "mvp").map((event, index) => <div className="timeline-row" key={`${event.minute}-${index}`}>
-            <time>{event.minute}'</time>
-            <i className={`event-icon ${event.type}`}>{eventIcon[event.type]}</i>
-            <div>
-              <strong>{eventLabel[event.type]}</strong>
-              <span>{event.type === "substitution" ? `${playerName(event.player)} entra por ${playerName(event.relatedPlayer || "")}` : event.type === "goal" ? playerName(event.player) : event.detail || playerName(event.player)}</span>
-            </div>
-          </div>)}
-        </div>
-        {mvp && <div className="mvp-callout"><span>MVP</span><div><small>JUGADOR DEL PARTIDO</small><strong>{playerName(mvp.player)}</strong></div></div>}
-      </section>
-
-      <section className="match-detail-card scorers-card">
-        <div className="detail-card-heading"><h2>Goles</h2><span>{goals.length} goles registrados</span></div>
-        <div className="scorers-grid">
-          {goals.map((goal, index) => <div className={playerIds.has(goal.player) ? "" : "opponent-goal"} key={`${goal.minute}-${index}`}>
-            <time>{goal.minute}'</time>
-            <strong>{playerName(goal.player)}</strong>
-            <span>{goal.relatedPlayer && playerIds.has(goal.relatedPlayer) ? `Asistencia: ${playerName(goal.relatedPlayer)}` : goal.detail}</span>
-          </div>)}
-        </div>
-        <h3 className="bench-title">Cambios realizados</h3>
-        <div className="substitution-list">
-          {substitutions.map((event, index) => <div key={`${event.minute}-${index}`}><time>{event.minute}'</time><span><b>{playerName(event.player)}</b> por {playerName(event.relatedPlayer || "")}</span></div>)}
-        </div>
-      </section>
-    </div>
-    {match.status === "finished" && votingCandidates.length ? <MatchMvpVoting matchId={match.id} candidates={votingCandidates} /> : null}
+    {mvp ? <section className="match-detail-card match-mvp-spotlight">
+      <div><span className="section-label">JUGADOR DEL PARTIDO</span><h2>MVP: {playerName(mvp.player)}</h2><p>{mvpPlayer?.alias || "Partido enorme de principio a fin."}</p></div>
+      {mvpPlayer?.photo ? <img src={mvpPlayer.photo} alt={`Foto de ${mvpPlayer.name}`} /> : <div className="mvp-photo-placeholder">{playerName(mvp.player).slice(0, 1)}</div>}
+    </section> : null}
   </main>;
 }
