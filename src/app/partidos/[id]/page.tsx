@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useMatches } from "@/components/matches-context";
 import { useTeam } from "@/components/team-context";
 import { calculateMatchMinutes } from "@/lib/player-stats";
+import MatchMvpVoting from "@/components/match-mvp-voting";
 
 const eventIcon = { goal: "GOL", substitution: "CAM", yellow: "TA", mvp: "MVP" };
 const eventLabel = { goal: "Gol", substitution: "Cambio", yellow: "Tarjeta", mvp: "MVP" };
@@ -28,6 +29,8 @@ export default function MatchPage() {
   const mvp = match.events.find((event) => event.type === "mvp");
   const substitutionIn = new Map(substitutions.map((event) => [event.player, event.minute]));
   const substitutionOut = new Map(substitutions.map((event) => [event.relatedPlayer, event.minute]));
+  const calledUpIds = new Set([...match.starters, ...match.substitutes]);
+  const votingCandidates = calledUpIds.size ? players.filter((player) => calledUpIds.has(player.id)) : players.filter((player) => player.active);
 
   return <main className="content-page shell match-detail">
     <Link className="text-link" href="/partidos">Volver a partidos</Link>
@@ -104,5 +107,6 @@ export default function MatchPage() {
         </div>
       </section>
     </div>
+    {match.status === "finished" && votingCandidates.length ? <MatchMvpVoting matchId={match.id} candidates={votingCandidates} /> : null}
   </main>;
 }

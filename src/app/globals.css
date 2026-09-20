@@ -179,6 +179,7 @@ h1,h2,h3,p { margin-top:0; } h1,h2,h3 { font-family:'Space Grotesk',sans-serif; 
 .match-card { cursor:pointer; }
 .match-card-action { color:var(--gold-light); font-size:10px; font-style:normal; margin-top:7px; white-space:nowrap; }
 .match-card:hover .match-card-action { text-decoration:underline; text-underline-offset:4px; }
+.mvp-voting { margin-top:18px; }.mvp-voting>p { color:#92949a; font-size:11px; margin:17px 0; }.mvp-vote-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:9px; margin-top:18px; }.mvp-vote-grid button { display:flex; flex-direction:column; align-items:flex-start; gap:5px; padding:13px; border:1px solid var(--line); background:#1d2026; color:var(--cream); cursor:pointer; text-align:left; }.mvp-vote-grid button:hover:not(:disabled),.mvp-vote-grid button.selected { border-color:var(--gold); background:#b49a6a18; }.mvp-vote-grid button:disabled { cursor:default; opacity:.7; }.mvp-vote-grid strong { font-size:12px; }.mvp-vote-grid span,.vote-message { color:#92949a; font-size:10px; }.vote-message { display:block; margin-top:14px; color:#b7c1ab; }
 @media (max-width:700px) {
   .news-page-grid { margin-top:32px; gap:16px; }
   .news-card { min-height:0; }
