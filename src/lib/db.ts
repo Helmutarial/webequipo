@@ -91,8 +91,6 @@ async function initializeDatabase() {
     await database.run("UPDATE matches SET events=?, updated_at=datetime('now') WHERE id=?", events, "aldapan-atletico-jabalies-2026-09-20");
     await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('aldapan_jabalies_mvp_20260920','1')");
   }
-  // Partido de demostración de versiones anteriores: no pertenece al calendario oficial.
-  await database.run("DELETE FROM matches WHERE id=?", "aldapan-atletico-jabalies-2026-09-20");
   const season2026Imported = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='season_2026_27_schedule_20261013'");
   if (!season2026Imported) {
     await database.run("DELETE FROM matches WHERE id IN (?,?,?)", "aldapan-rival-2026-06-15", "aldapan-union-2026-06-08", "aldapan-atletico-jabalies-2026-09-20");
@@ -105,6 +103,11 @@ async function initializeDatabase() {
     "INSERT OR IGNORE INTO matches (id,season,opponent,opponentShort,date,competition,venue,status,isHome,duration,homeScore,awayScore,starters,substitutes,events,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))",
     "amistoso-alacran-2026-10-11", "2026/27", "Asociación Alacrán 1997", "ALA", "2026-10-11T00:00:00", "Amistoso", "Campo por confirmar", "finished", 0, 90, 3, 2, "[]", "[]",
     JSON.stringify([{ minute: 0, type: "goal", player: "juanjo", detail: "Aldapan Gora" }, { minute: 0, type: "goal", player: "juanjo", detail: "Aldapan Gora" }, { minute: 0, type: "goal", player: "juanjo", detail: "Aldapan Gora" }, { minute: 90, type: "mvp", player: "juanjo" }]),
+  );
+  await database.run(
+    "INSERT OR IGNORE INTO matches (id,season,opponent,opponentShort,date,competition,venue,status,isHome,duration,homeScore,awayScore,starters,substitutes,events,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))",
+    "aldapan-atletico-jabalies-2026-09-20", "2026/27", "Atlético Jabalíes", "JAB", "2026-09-20T21:00:00", "Amistoso", "Campo Municipal - Gora", "finished", 1, 90, 4, 0, "[]", "[]",
+    JSON.stringify([{ minute: 0, type: "goal", player: "ortiz", detail: "Aldapan Gora" }, { minute: 0, type: "goal", player: "ortiz", detail: "Aldapan Gora" }, { minute: 0, type: "goal", player: "ortiz", detail: "Aldapan Gora" }, { minute: 0, type: "goal", player: "corisco", detail: "Aldapan Gora" }, { minute: 90, type: "mvp", player: "ortiz" }]),
   );
   return database;
 }

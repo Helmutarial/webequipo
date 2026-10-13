@@ -35,7 +35,9 @@ const emptyStanding = (team: string): StandingRow => ({
 export function getStandings(matches: Match[], season: string): StandingRow[] {
   if (season === "2025/26") return jdmStandings2025;
 
-  const rows = new Map<string, StandingRow>();
+  // Mientras no se haya disputado la primera jornada, mantenemos visible al club
+  // con todos los contadores a cero en vez de mostrar una tabla vacía.
+  const rows = new Map<string, StandingRow>([["Aldapan Gora", emptyStanding("Aldapan Gora")]]);
   const getRow = (team: string) => {
     if (!rows.has(team)) rows.set(team, emptyStanding(team));
     return rows.get(team)!;

@@ -13,7 +13,15 @@ export default function MatchesPage() {
   const seasons = useMemo(() => getSeasons(matches), [matches]);
   const [selectedSeason, setSelectedSeason] = useState("2026/27");
   const visibleSeason = seasons.includes(selectedSeason) ? selectedSeason : seasons[0];
-  const leagueMatches = matches.filter((match) => getMatchSeason(match) === visibleSeason && match.competition.startsWith("Liga"));
+  const now = Date.now();
+  const leagueMatches = matches
+    .filter((match) => getMatchSeason(match) === visibleSeason && match.competition.startsWith("Liga"))
+    .sort((first, second) => {
+      const firstUpcoming = new Date(first.date).getTime() >= now;
+      const secondUpcoming = new Date(second.date).getTime() >= now;
+      if (firstUpcoming !== secondUpcoming) return firstUpcoming ? -1 : 1;
+      return firstUpcoming ? first.date.localeCompare(second.date) : second.date.localeCompare(first.date);
+    });
 
   return <main className="content-page shell">
     <div className="page-intro">
