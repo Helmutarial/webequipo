@@ -13,7 +13,8 @@ const parseMatch = (row: Record<string, unknown>): Match => ({
   date: String(row.date),
   competition: String(row.competition),
   venue: String(row.venue),
-  status: row.status === "upcoming" ? "upcoming" : "finished",
+  status: row.status === "upcoming" || row.status === "bye" ? row.status : "finished",
+  isHome: Number(row.isHome ?? 1) === 1,
   duration: Number(row.duration || 90),
   homeScore: row.homeScore == null ? null : Number(row.homeScore),
   awayScore: row.awayScore == null ? null : Number(row.awayScore),
@@ -43,7 +44,7 @@ export async function GET() {
   const database = await getDatabase();
   const players = await database.all("SELECT id,name,alias,number,position,photo,goals,assists,appearances,minutes,starterAppearances,substituteAppearances,mvpCount,bio,active FROM players ORDER BY active DESC, CASE WHEN number = 0 THEN 999 ELSE number END ASC");
   const matches = (await database.all("SELECT * FROM matches")).map(parseMatch);
-  const matchStats = calculatePlayerStats(matches, players.map((player) => player.id));
+  const matchStats = calculatePlayerStats(matches, players.map((player) => player.id), { season: "2026/27", leagueOnly: true });
   return NextResponse.json(players.map((player) => {
     const basePlayer = { ...player, active: Boolean(player.active) };
     const computed = matchStats.get(player.id);

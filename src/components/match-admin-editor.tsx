@@ -15,6 +15,7 @@ const blankMatch = (): Match => ({
   competition: "Amistoso",
   venue: "Campo Municipal - Gora",
   status: "upcoming",
+  isHome: true,
   duration: 90,
   homeScore: null,
   awayScore: null,
@@ -131,6 +132,7 @@ export default function MatchAdminEditor({ players }: { players: Player[] }) {
         <label>Fecha y hora<input type="datetime-local" value={selected.date.slice(0, 16)} onChange={(event) => update("date", event.target.value)} /></label>
         <label>Competicion<input value={selected.competition} onChange={(event) => update("competition", event.target.value)} /></label>
         <label className="full-field">Campo<input value={selected.venue} onChange={(event) => update("venue", event.target.value)} /></label>
+        <label>Condición<select value={selected.isHome ? "home" : "away"} onChange={(event) => update("isHome", event.target.value === "home")}><option value="home">Local</option><option value="away">Visitante</option></select></label>
         <label>Estado<select value={selected.status} onChange={(event) => update("status", event.target.value as Match["status"])}><option value="upcoming">Proximo</option><option value="finished">Finalizado</option></select></label>
         <label>Duracion<input type="number" value={selected.duration || 90} onChange={(event) => update("duration", Math.max(1, Number(event.target.value) || 90))} /></label>
         <label>Goles Aldapan<input type="number" value={selected.homeScore ?? ""} onChange={(event) => update("homeScore", event.target.value === "" ? null : Number(event.target.value))} /></label>

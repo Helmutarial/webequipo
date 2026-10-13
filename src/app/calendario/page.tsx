@@ -13,9 +13,9 @@ const formatTime = (date: string) => new Date(date).toLocaleTimeString("es-ES", 
 export default function CalendarPage() {
   const { matches, loading } = useMatches();
   const seasons = useMemo(() => getSeasons(matches), [matches]);
-  const [selectedSeason, setSelectedSeason] = useState("2025/26");
+  const [selectedSeason, setSelectedSeason] = useState("2026/27");
   const visibleSeason = seasons.includes(selectedSeason) ? selectedSeason : seasons[0];
-  const seasonMatches = [...matches].filter((match) => getMatchSeason(match) === visibleSeason).sort((a, b) => a.date.localeCompare(b.date));
+  const seasonMatches = [...matches].filter((match) => getMatchSeason(match) === visibleSeason && match.competition.startsWith("Liga")).sort((a, b) => a.date.localeCompare(b.date));
   const months = seasonMatches.reduce<Record<string, typeof seasonMatches>>((groups, match) => {
     const month = formatMonth(match.date);
     groups[month] = [...(groups[month] || []), match];
@@ -32,8 +32,8 @@ export default function CalendarPage() {
       <h2>{month}</h2>
       <div>{monthMatches.map((match) => <Link className="calendar-match" href={`/partidos/${match.id}`} key={match.id}>
         <time>{formatDay(match.date)}<small>{formatTime(match.date)}</small></time>
-        <div><span>{match.competition}</span><strong>Aldapan Gora vs {match.opponent}</strong><small>{match.venue}</small></div>
-        <b>{match.status === "finished" ? `${match.homeScore} — ${match.awayScore}` : "Por jugar"}</b>
+        <div><span>{match.competition}</span><strong>{match.status === "bye" ? "Aldapan Gora · Descansa" : match.isHome !== false ? `Aldapan Gora vs ${match.opponent}` : `${match.opponent} vs Aldapan Gora`}</strong><small>{match.venue || "Sin partido"}</small></div>
+        <b>{match.status === "finished" ? match.isHome !== false ? `${match.homeScore} — ${match.awayScore}` : `${match.awayScore} — ${match.homeScore}` : match.status === "bye" ? "Descanso" : match.isHome !== false ? "Local" : "Visitante"}</b>
       </Link>)}</div>
     </section>)}</div>}
   </main>;

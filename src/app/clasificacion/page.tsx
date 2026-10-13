@@ -8,7 +8,7 @@ import { getSeasons, getStandings } from "@/lib/season-utils";
 export default function StandingsPage() {
   const { matches } = useMatches();
   const seasons = useMemo(() => getSeasons(matches), [matches]);
-  const [selectedSeason, setSelectedSeason] = useState("2025/26");
+  const [selectedSeason, setSelectedSeason] = useState("2026/27");
   const visibleSeason = seasons.includes(selectedSeason) ? selectedSeason : seasons[0];
   const standings = getStandings(matches, visibleSeason);
   const aldapanStanding = standings.find((team) => team.team === "Aldapan Gora");

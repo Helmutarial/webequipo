@@ -24,7 +24,7 @@ export default function RankingsPage() {
   const visibleSeason = seasons.includes(selectedSeason) ? selectedSeason : seasons[0];
   const seasonMatches = matches.filter((match) => getMatchSeason(match) === visibleSeason);
   const activePlayers = players.filter((player) => player.active);
-  const totals = calculatePlayerStats(seasonMatches, activePlayers.map((player) => player.id));
+  const totals = calculatePlayerStats(seasonMatches, activePlayers.map((player) => player.id), { season: visibleSeason, leagueOnly: true });
   const rankedPlayers = activePlayers.map((player) => ({ player, stats: totals.get(player.id) ?? player }));
 
   return <main className="content-page shell">

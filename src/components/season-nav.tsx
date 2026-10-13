@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 const items = [
   { href: "/partidos", label: "Partidos" },
+  { href: "/amistosos", label: "Amistosos" },
   { href: "/clasificacion", label: "Clasificación" },
   { href: "/rankings", label: "Rankings" },
   { href: "/calendario", label: "Calendario" },

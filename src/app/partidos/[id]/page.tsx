@@ -27,17 +27,16 @@ export default function MatchPage() {
   const substitutionOut = new Map(substitutions.map((event) => [event.relatedPlayer, event.minute]));
   const scorers = [...goals.reduce((summary, goal) => summary.set(goal.player, (summary.get(goal.player) || 0) + 1), new Map<string, number>())];
   const hasLineup = match.starters.length || match.substitutes.length;
+  const aldapanFirst = match.isHome !== false;
 
   return <main className="content-page shell match-detail">
     <Link className="text-link" href="/partidos">Volver a partidos</Link>
     <header className="match-detail-header">
       <span className="section-label">{match.competition} - {formatDate(match.date)}</span>
       <div className="match-scoreboard">
-        <div><strong>Aldapan Gora</strong><small>ALG</small></div>
-        <b>{match.homeScore} - {match.awayScore}</b>
-        <div><small>{match.opponentShort}</small><strong>{match.opponent}</strong></div>
+        {match.status === "bye" ? <b className="bye-score">DESCANSO</b> : <><div><strong>{aldapanFirst ? "Aldapan Gora" : match.opponent}</strong><small>{aldapanFirst ? "ALG" : match.opponentShort}</small></div><b>{aldapanFirst ? match.homeScore ?? "—" : match.awayScore ?? "—"} - {aldapanFirst ? match.awayScore ?? "—" : match.homeScore ?? "—"}</b><div><small>{aldapanFirst ? match.opponentShort : "ALG"}</small><strong>{aldapanFirst ? match.opponent : "Aldapan Gora"}</strong></div></>}
       </div>
-      <p>{match.venue} - {match.status === "finished" ? `Finalizado · ${match.duration || 90}'` : "Proximo partido"}</p>
+      <p>{match.venue || "Sin partido"} - {match.status === "finished" ? `Finalizado · ${match.duration || 90}'` : match.status === "bye" ? "Jornada de descanso" : "Próximo partido"}</p>
     </header>
 
     {hasLineup ? <section className="match-detail-card lineup-overview-card">

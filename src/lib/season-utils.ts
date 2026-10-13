@@ -41,7 +41,7 @@ export function getStandings(matches: Match[], season: string): StandingRow[] {
     return rows.get(team)!;
   };
 
-  for (const match of matches.filter((item) => getMatchSeason(item) === season && item.status === "finished" && item.homeScore !== null && item.awayScore !== null)) {
+  for (const match of matches.filter((item) => getMatchSeason(item) === season && item.competition.startsWith("Liga") && item.status === "finished" && item.homeScore !== null && item.awayScore !== null)) {
     const aldapan = getRow("Aldapan Gora");
     const opponent = getRow(match.opponent);
     const homeScore = match.homeScore ?? 0;

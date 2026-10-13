@@ -3,7 +3,7 @@ import { getDatabase } from "@/lib/db";
 import { isAdminRequest } from "@/lib/auth";
 import { Match, MatchEvent } from "@/lib/matches";
 
-const parseMatch = (row: Record<string, unknown>) => ({ ...row, duration: Number(row.duration || 90), starters: JSON.parse(String(row.starters)), substitutes: JSON.parse(String(row.substitutes)), events: JSON.parse(String(row.events)) });
+const parseMatch = (row: Record<string, unknown>) => ({ ...row, isHome: Number(row.isHome ?? 1) === 1, duration: Number(row.duration || 90), starters: JSON.parse(String(row.starters)), substitutes: JSON.parse(String(row.substitutes)), events: JSON.parse(String(row.events)) });
 const slug = (text: string) => text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 const cleanEvents = (events: MatchEvent[] = []) => events.map((event) => ({ minute: Number(event.minute) || 0, type: event.type, player: event.player || "", relatedPlayer: event.relatedPlayer || "", detail: event.detail || "" })).filter((event) => event.type && event.player).sort((a, b) => a.minute - b.minute);
 const cleanMatch = (body: Partial<Match>): Match => ({
@@ -14,7 +14,8 @@ const cleanMatch = (body: Partial<Match>): Match => ({
   date: body.date || new Date().toISOString().slice(0, 16),
   competition: body.competition?.trim() || "Amistoso",
   venue: body.venue?.trim() || "Campo Municipal - Gora",
-  status: body.status === "finished" ? "finished" : "upcoming",
+  status: body.status === "finished" || body.status === "bye" ? body.status : "upcoming",
+  isHome: body.isHome !== false,
   duration: Math.max(1, Number(body.duration) || 90),
   homeScore: body.homeScore == null ? null : Number(body.homeScore),
   awayScore: body.awayScore == null ? null : Number(body.awayScore),
@@ -29,6 +30,6 @@ export async function POST(request: NextRequest) {
   if (!(await isAdminRequest())) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   const match = cleanMatch(await request.json());
   const database = await getDatabase();
-  await database.run("INSERT INTO matches (id,season,opponent,opponentShort,date,competition,venue,status,duration,homeScore,awayScore,starters,substitutes,events,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))", match.id, match.season, match.opponent, match.opponentShort, match.date, match.competition, match.venue, match.status, match.duration, match.homeScore, match.awayScore, JSON.stringify(match.starters), JSON.stringify(match.substitutes), JSON.stringify(match.events));
+  await database.run("INSERT INTO matches (id,season,opponent,opponentShort,date,competition,venue,status,isHome,duration,homeScore,awayScore,starters,substitutes,events,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))", match.id, match.season, match.opponent, match.opponentShort, match.date, match.competition, match.venue, match.status, match.isHome ? 1 : 0, match.duration, match.homeScore, match.awayScore, JSON.stringify(match.starters), JSON.stringify(match.substitutes), JSON.stringify(match.events));
   return NextResponse.json(match, { status: 201 });
 }

@@ -13,7 +13,7 @@ const emptyTotals = (): PlayerTotals => ({
   mvpCount: 0,
 });
 
-export function calculatePlayerStats(matches: Match[], playerIds: string[]) {
+export function calculatePlayerStats(matches: Match[], playerIds: string[], options: { season?: string; leagueOnly?: boolean } = {}) {
   const validPlayers = new Set(playerIds);
   const totals = new Map<string, PlayerTotals>();
   for (const playerId of playerIds) totals.set(playerId, emptyTotals());
@@ -24,7 +24,7 @@ export function calculatePlayerStats(matches: Match[], playerIds: string[]) {
     playerTotals[field] += value;
   };
 
-  for (const match of matches.filter((item) => item.status === "finished")) {
+  for (const match of matches.filter((item) => item.status === "finished" && (!options.season || item.season === options.season) && (!options.leagueOnly || item.competition.startsWith("Liga")))) {
     const duration = match.duration || 90;
     const substitutions = match.events.filter((event) => event.type === "substitution");
     const enteringMinutes = new Map(substitutions.map((event) => [event.player, event.minute]));

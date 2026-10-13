@@ -4,7 +4,7 @@ import sqlite3 from "sqlite3";
 import { open, Database } from "sqlite";
 import { initialPlayers } from "@/lib/team";
 import { initialNews } from "@/lib/news";
-import { initialMatches } from "@/lib/matches";
+import { initialMatches, season2026Matches } from "@/lib/matches";
 import { jdmMatches2025 } from "@/lib/jdm-2025-26";
 
 let databasePromise: Promise<Database> | undefined;
@@ -37,11 +37,25 @@ async function initializeDatabase() {
     await database.run("DELETE FROM news WHERE id IN (?,?,?)", ...initialNews.map((item) => item.id));
     await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('news_seed_cleanup_20260723','1')");
   }
-  await database.exec(`CREATE TABLE IF NOT EXISTS matches (id TEXT PRIMARY KEY, season TEXT NOT NULL DEFAULT '2026/27', opponent TEXT NOT NULL, opponentShort TEXT NOT NULL, date TEXT NOT NULL, competition TEXT NOT NULL, venue TEXT NOT NULL, status TEXT NOT NULL, duration INTEGER NOT NULL DEFAULT 90, homeScore INTEGER, awayScore INTEGER, starters TEXT NOT NULL, substitutes TEXT NOT NULL, events TEXT NOT NULL, updated_at TEXT NOT NULL)`);
+  await database.run(
+    "INSERT OR IGNORE INTO news (id,title,slug,excerpt,content,tag,date,image,accent,published,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,datetime('now'))",
+    "amistoso-alacran-octubre-2026",
+    "Juanjo firma un triplete ante Alacrán",
+    "juanjo-firma-un-triplete-ante-alacran",
+    "El Aldapan Gora vence 2–3 en el amistoso frente a Asociación Alacrán 1997, con Juanjo como gran protagonista.",
+    "El Aldapan Gora cerró el domingo con una victoria de mucho carácter ante Asociación Alacrán 1997. Juanjo firmó los tres goles del equipo en el 2–3 final y fue elegido MVP del partido. Un buen test para seguir afinando al grupo antes del inicio de la liga.",
+    "PARTIDOS",
+    "2026-10-11",
+    "",
+    "gold",
+    1,
+  );
+  await database.exec(`CREATE TABLE IF NOT EXISTS matches (id TEXT PRIMARY KEY, season TEXT NOT NULL DEFAULT '2026/27', opponent TEXT NOT NULL, opponentShort TEXT NOT NULL, date TEXT NOT NULL, competition TEXT NOT NULL, venue TEXT NOT NULL, status TEXT NOT NULL, isHome INTEGER NOT NULL DEFAULT 1, duration INTEGER NOT NULL DEFAULT 90, homeScore INTEGER, awayScore INTEGER, starters TEXT NOT NULL, substitutes TEXT NOT NULL, events TEXT NOT NULL, updated_at TEXT NOT NULL)`);
   const matchColumns = await database.all<{ name: string }[]>("PRAGMA table_info(matches)");
   const existingMatchColumns = new Set(matchColumns.map((column) => column.name));
   if (!existingMatchColumns.has("season")) await database.exec("ALTER TABLE matches ADD COLUMN season TEXT NOT NULL DEFAULT '2026/27'");
   if (!existingMatchColumns.has("duration")) await database.exec("ALTER TABLE matches ADD COLUMN duration INTEGER NOT NULL DEFAULT 90");
+  if (!existingMatchColumns.has("isHome")) await database.exec("ALTER TABLE matches ADD COLUMN isHome INTEGER NOT NULL DEFAULT 1");
   await database.exec(`CREATE TABLE IF NOT EXISTS match_votes (match_id TEXT NOT NULL, user_email TEXT NOT NULL, player_id TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY (match_id, user_email), FOREIGN KEY (match_id) REFERENCES matches(id))`);
   const matchesSeeded = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='matches_seeded_once'");
   const matchCount = await database.get<{ count: number }>("SELECT COUNT(*) as count FROM matches");
@@ -77,5 +91,20 @@ async function initializeDatabase() {
     await database.run("UPDATE matches SET events=?, updated_at=datetime('now') WHERE id=?", events, "aldapan-atletico-jabalies-2026-09-20");
     await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('aldapan_jabalies_mvp_20260920','1')");
   }
+  // Partido de demostración de versiones anteriores: no pertenece al calendario oficial.
+  await database.run("DELETE FROM matches WHERE id=?", "aldapan-atletico-jabalies-2026-09-20");
+  const season2026Imported = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='season_2026_27_schedule_20261013'");
+  if (!season2026Imported) {
+    await database.run("DELETE FROM matches WHERE id IN (?,?,?)", "aldapan-rival-2026-06-15", "aldapan-union-2026-06-08", "aldapan-atletico-jabalies-2026-09-20");
+    const scheduleStatement = await database.prepare("INSERT OR REPLACE INTO matches (id,season,opponent,opponentShort,date,competition,venue,status,isHome,duration,homeScore,awayScore,starters,substitutes,events,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))");
+    for (const match of season2026Matches) await scheduleStatement.run(match.id, match.season, match.opponent, match.opponentShort, match.date, match.competition, match.venue, match.status, match.isHome ? 1 : 0, match.duration, match.homeScore, match.awayScore, JSON.stringify(match.starters), JSON.stringify(match.substitutes), JSON.stringify(match.events));
+    await scheduleStatement.finalize();
+    await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('season_2026_27_schedule_20261013','1')");
+  }
+  await database.run(
+    "INSERT OR IGNORE INTO matches (id,season,opponent,opponentShort,date,competition,venue,status,isHome,duration,homeScore,awayScore,starters,substitutes,events,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))",
+    "amistoso-alacran-2026-10-11", "2026/27", "Asociación Alacrán 1997", "ALA", "2026-10-11T00:00:00", "Amistoso", "Campo por confirmar", "finished", 0, 90, 3, 2, "[]", "[]",
+    JSON.stringify([{ minute: 0, type: "goal", player: "juanjo", detail: "Aldapan Gora" }, { minute: 0, type: "goal", player: "juanjo", detail: "Aldapan Gora" }, { minute: 0, type: "goal", player: "juanjo", detail: "Aldapan Gora" }, { minute: 90, type: "mvp", player: "juanjo" }]),
+  );
   return database;
 }
