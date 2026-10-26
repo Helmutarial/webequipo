@@ -25,7 +25,6 @@ export default function MatchPage() {
   const mvpPlayer = mvp ? players.find((player) => player.id === mvp.player) : undefined;
   const substitutionIn = new Map(substitutions.map((event) => [event.player, event.minute]));
   const substitutionOut = new Map(substitutions.map((event) => [event.relatedPlayer, event.minute]));
-  const scorers = [...goals.reduce((summary, goal) => summary.set(goal.player, (summary.get(goal.player) || 0) + 1), new Map<string, number>())];
   const hasLineup = match.starters.length || match.substitutes.length;
   const aldapanFirst = match.isHome !== false;
 
@@ -73,7 +72,7 @@ export default function MatchPage() {
 
     <section className="match-detail-card match-summary-card">
       <div className="detail-card-heading"><h2>Resumen del partido</h2><span>{goals.length} goles</span></div>
-      <div className="scorer-summary">{scorers.map(([playerId, count]) => <div key={playerId}><strong>{playerName(playerId)}</strong><span>{count === 1 ? "1 gol" : `${count} goles`}</span></div>)}</div>
+      <div className="scorer-summary">{goals.map((goal, index) => <div key={`${goal.player}-${index}`}><strong><b aria-hidden="true">⚽</b>{playerName(goal.player)}</strong><span>Gol</span>{goal.relatedPlayer ? <small><b aria-hidden="true">🦶</b> Asistencia: {playerName(goal.relatedPlayer)}</small> : null}</div>)}</div>
     </section>
     {mvp ? <section className="match-detail-card match-mvp-spotlight">
       <div><span className="section-label">JUGADOR DEL PARTIDO</span><h2>MVP: {playerName(mvp.player)}</h2><p>{mvpPlayer?.alias || "Partido enorme de principio a fin."}</p></div>

@@ -6,6 +6,7 @@ import { useMatches } from "@/components/matches-context";
 import { getSeasons, getStandings } from "@/lib/season-utils";
 import { formatOfficialSync, useOfficialCompetition } from "@/components/official-competition";
 import type { OfficialCompetition, OfficialStanding } from "@/lib/madrid-competition";
+import { getTeamCrest } from "@/lib/team-crests";
 
 const normalize = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/gi, "").toUpperCase();
 
@@ -56,7 +57,7 @@ export default function StandingsPage() {
       <div className="standings-table">
         <div className="standings-head"><span>Pos</span><span>Equipo</span><span>PJ</span><span>GF</span><span>GC</span><span>DG</span><span>Pts</span></div>
         {visibleStandings.map((team) => <div className={team.team.toUpperCase().includes("ALDAPAN GORA") ? "standings-row highlight" : "standings-row"} key={team.team}>
-          <span>{team.position}</span><strong>{team.team}</strong><span>{team.played}</span><span>{team.goalsFor}</span><span>{team.goalsAgainst}</span><span>{team.goalsFor - team.goalsAgainst}</span><b>{team.points}</b>
+          <span>{team.position}</span><strong>{getTeamCrest(team.team) ? <img className="team-crest" src={getTeamCrest(team.team)!} alt="" /> : null}{team.team}</strong><span>{team.played}</span><span>{team.goalsFor}</span><span>{team.goalsAgainst}</span><span>{team.goalsFor - team.goalsAgainst}</span><b>{team.points}</b>
         </div>)}
       </div>
     </section>

@@ -155,6 +155,27 @@ async function initializeDatabase() {
     }
     await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('jones_photo_recovery_20261026','1')");
   }
+  const matchDataCorrection = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='match_data_correction_20261026'");
+  if (!matchDataCorrection) {
+    const players = await database.all<{ id: string; name: string; alias: string; photo: string; updated_at: string }[]>("SELECT id,name,alias,photo,updated_at FROM players");
+    const normalized = (value: string) => value.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es-ES");
+    const named = (name: string) => players.find((player) => [player.name, player.alias].some((value) => normalized(value) === normalized(name)));
+    const danCandidates = players.filter((player) => [player.name, player.alias].some((value) => ["dan", "jones"].includes(normalized(value))));
+    const dan = [...danCandidates].sort((a, b) => Number(Boolean(b.photo)) - Number(Boolean(a.photo)) || b.updated_at.localeCompare(a.updated_at))[0];
+    if (dan) {
+      await database.run("UPDATE players SET name='Dan', alias='Dan', number=14, updated_at=datetime('now') WHERE id=?", dan.id);
+      for (const copy of danCandidates.filter((player) => player.id !== dan.id)) await database.run("DELETE FROM players WHERE id=?", copy.id);
+    }
+    const moreno = named("Moreno"); const baroffi = named("Baroffi");
+    const aula = await database.get<{ events: string }>("SELECT events FROM matches WHERE id='liga-2026-27-aula'");
+    if (aula && moreno && baroffi) {
+      const events = JSON.parse(aula.events);
+      const morenoGoal = events.find((event: { type: string }) => event.type === "goal");
+      if (morenoGoal) { morenoGoal.player = moreno.id; morenoGoal.relatedPlayer = baroffi.id; }
+      await database.run("UPDATE matches SET events=?, updated_at=datetime('now') WHERE id='liga-2026-27-aula'", JSON.stringify(events));
+    }
+    await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('match_data_correction_20261026','1')");
+  }
   await database.exec(`CREATE TABLE IF NOT EXISTS news (id TEXT PRIMARY KEY, title TEXT NOT NULL, slug TEXT NOT NULL UNIQUE, excerpt TEXT NOT NULL DEFAULT '', content TEXT NOT NULL DEFAULT '', tag TEXT NOT NULL DEFAULT 'CLUB', date TEXT NOT NULL, image TEXT NOT NULL DEFAULT '', accent TEXT NOT NULL DEFAULT 'gold', published INTEGER NOT NULL DEFAULT 1, updated_at TEXT NOT NULL)`);
   await database.exec(`CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE, passwordHash TEXT NOT NULL, name TEXT NOT NULL, playerId TEXT NOT NULL DEFAULT '', role TEXT NOT NULL DEFAULT 'USER', status TEXT NOT NULL DEFAULT 'PENDING', created_at TEXT NOT NULL, updated_at TEXT NOT NULL, approved_at TEXT)`);
   const demoNewsCleanup = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='news_seed_cleanup_20260723'");
