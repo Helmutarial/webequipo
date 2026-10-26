@@ -114,6 +114,33 @@ async function initializeDatabase() {
     }
     await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('player_name_correction_20261026','1')");
   }
+  const legacyRemoval = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='legacy_player_removal_20261026_v2'");
+  if (!legacyRemoval) {
+    const players = await database.all<{ id: string; name: string; alias: string }[]>("SELECT id,name,alias FROM players");
+    const normalizeName = (value: string) => value.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es-ES");
+    const jones = players.find((player) => [player.name, player.alias].some((value) => normalizeName(value) === "jones"));
+    const removals = new Map<string, string>();
+    for (const player of players) {
+      const names = [normalizeName(player.name), normalizeName(player.alias)];
+      if (names.includes("dan")) removals.set(player.id, jones?.id || "Jones");
+      if (names.some((name) => ["figa", "esku", "eskuh"].includes(name))) removals.set(player.id, "");
+    }
+    if (removals.size) {
+      const matches = await database.all<{ id: string; starters: string; substitutes: string; events: string }[]>("SELECT id,starters,substitutes,events FROM matches");
+      for (const match of matches) {
+        const replace = (id: string) => removals.has(id) ? removals.get(id) || "" : id;
+        const starters = JSON.parse(match.starters).map(replace).filter(Boolean);
+        const substitutes = JSON.parse(match.substitutes).map(replace).filter(Boolean);
+        const events = JSON.parse(match.events).map((event: { player: string; relatedPlayer?: string }) => ({ ...event, player: replace(event.player), relatedPlayer: event.relatedPlayer ? replace(event.relatedPlayer) || undefined : undefined })).filter((event: { player: string }) => Boolean(event.player));
+        await database.run("UPDATE matches SET starters=?, substitutes=?, events=?, updated_at=datetime('now') WHERE id=?", JSON.stringify([...new Set(starters)]), JSON.stringify([...new Set(substitutes)]), JSON.stringify(events), match.id);
+      }
+      for (const [oldId, newId] of removals) {
+        if (newId && jones?.id) await database.run("UPDATE users SET playerId=? WHERE playerId=?", newId, oldId);
+        await database.run("DELETE FROM players WHERE id=?", oldId);
+      }
+    }
+    await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('legacy_player_removal_20261026_v2','1')");
+  }
   await database.exec(`CREATE TABLE IF NOT EXISTS news (id TEXT PRIMARY KEY, title TEXT NOT NULL, slug TEXT NOT NULL UNIQUE, excerpt TEXT NOT NULL DEFAULT '', content TEXT NOT NULL DEFAULT '', tag TEXT NOT NULL DEFAULT 'CLUB', date TEXT NOT NULL, image TEXT NOT NULL DEFAULT '', accent TEXT NOT NULL DEFAULT 'gold', published INTEGER NOT NULL DEFAULT 1, updated_at TEXT NOT NULL)`);
   await database.exec(`CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE, passwordHash TEXT NOT NULL, name TEXT NOT NULL, playerId TEXT NOT NULL DEFAULT '', role TEXT NOT NULL DEFAULT 'USER', status TEXT NOT NULL DEFAULT 'PENDING', created_at TEXT NOT NULL, updated_at TEXT NOT NULL, approved_at TEXT)`);
   const demoNewsCleanup = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='news_seed_cleanup_20260723'");
