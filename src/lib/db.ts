@@ -121,9 +121,9 @@ async function initializeDatabase() {
     const jones = players.find((player) => [player.name, player.alias].some((value) => normalizeName(value) === "jones"));
     const removals = new Map<string, string>();
     for (const player of players) {
-      const names = [normalizeName(player.name), normalizeName(player.alias)];
-      if (names.includes("dan")) removals.set(player.id, jones?.id || "Jones");
-      if (names.some((name) => ["figa", "esku", "eskuh"].includes(name))) removals.set(player.id, "");
+      const name = normalizeName(player.name);
+      if (name === "dan" && player.id !== jones?.id) removals.set(player.id, jones?.id || "Jones");
+      if (["figa", "esku", "eskuh"].includes(name)) removals.set(player.id, "");
     }
     if (removals.size) {
       const matches = await database.all<{ id: string; starters: string; substitutes: string; events: string }[]>("SELECT id,starters,substitutes,events FROM matches");
@@ -140,6 +140,20 @@ async function initializeDatabase() {
       }
     }
     await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('legacy_player_removal_20261026_v2','1')");
+  }
+  const jonesRecovery = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='jones_photo_recovery_20261026'");
+  if (!jonesRecovery) {
+    const tato = await database.get<{ starters: string; substitutes: string; events: string }>("SELECT starters,substitutes,events FROM matches WHERE id='liga-2026-27-tato'");
+    const existingJones = await database.get<{ id: string }>("SELECT id FROM players WHERE lower(name)='jones' OR lower(alias)='jones' LIMIT 1");
+    const injuryEvent = tato ? JSON.parse(tato.events).find((event: { detail?: string }) => event.detail === "Lesión de Dan") as { relatedPlayer?: string } | undefined : undefined;
+    const jonesId = injuryEvent?.relatedPlayer;
+    if (!existingJones && jonesId) {
+      const uploadsDirectory = path.join(dataDirectory, "uploads");
+      const candidates = (await fs.readdir(uploadsDirectory).catch(() => [] as string[])).filter((filename) => filename.startsWith(`${jonesId}-`));
+      const newest = candidates.length ? (await Promise.all(candidates.map(async (filename) => ({ filename, modified: (await fs.stat(path.join(uploadsDirectory, filename))).mtimeMs })))).sort((a, b) => b.modified - a.modified)[0].filename : "";
+      await database.run("INSERT OR IGNORE INTO players (id,name,alias,number,position,photo,goals,assists,appearances,minutes,starterAppearances,substituteAppearances,mvpCount,bio,active,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))", jonesId, "Jones", "Dan", 0, "Jugador", newest ? `/api/uploads/${newest}` : "", 0, 0, 0, 0, 0, 0, 0, "Jugador del Aldapan Gora.", 1);
+    }
+    await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('jones_photo_recovery_20261026','1')");
   }
   await database.exec(`CREATE TABLE IF NOT EXISTS news (id TEXT PRIMARY KEY, title TEXT NOT NULL, slug TEXT NOT NULL UNIQUE, excerpt TEXT NOT NULL DEFAULT '', content TEXT NOT NULL DEFAULT '', tag TEXT NOT NULL DEFAULT 'CLUB', date TEXT NOT NULL, image TEXT NOT NULL DEFAULT '', accent TEXT NOT NULL DEFAULT 'gold', published INTEGER NOT NULL DEFAULT 1, updated_at TEXT NOT NULL)`);
   await database.exec(`CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE, passwordHash TEXT NOT NULL, name TEXT NOT NULL, playerId TEXT NOT NULL DEFAULT '', role TEXT NOT NULL DEFAULT 'USER', status TEXT NOT NULL DEFAULT 'PENDING', created_at TEXT NOT NULL, updated_at TEXT NOT NULL, approved_at TEXT)`);
