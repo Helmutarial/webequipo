@@ -165,6 +165,20 @@ h1,h2,h3,p { margin-top:0; } h1,h2,h3 { font-family:'Space Grotesk',sans-serif; 
   .slot-player.player-0 b { width:16px; height:16px; font-size:7px; }
   .slot-player.player-0 .slot-name-row>span { font-size:7px; }
 }
+
+/* Los escudos acompañan al marcador, como en una ficha de partido. */
+.match-card-teams { grid-template-columns:minmax(0,1fr) 36px auto 36px minmax(0,1fr); gap:10px; }
+.match-card-teams .match-team { min-width:0; }
+.match-card-teams .match-team b { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.match-card-teams .match-team.home { text-align:right; }
+.match-card-teams .match-team.away { text-align:left; }
+.match-team-crest,.match-team-crest-placeholder { width:32px; height:32px; margin:0; align-self:center; object-fit:contain; }
+.match-team-crest-placeholder { display:block; }
+.official-team { display:flex; align-items:center; gap:10px; min-width:0; }
+.official-team.home { justify-content:flex-start; }
+.official-team.away { justify-content:flex-end; }
+.official-team img { width:29px; height:29px; flex:0 0 29px; object-fit:contain; }
+@media (max-width:700px) { .match-card-teams { grid-template-columns:minmax(0,1fr) 28px auto 28px minmax(0,1fr); gap:5px; }.match-team-crest,.match-team-crest-placeholder { width:25px; height:25px; }.official-team { gap:6px; }.official-team img { width:22px; height:22px; flex-basis:22px; } }
 @media (max-width:420px) {
   .position-slot.filled { min-width:62px; }
   .slot-player.player-0 { width:54px; }

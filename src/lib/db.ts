@@ -292,5 +292,25 @@ async function initializeDatabase() {
     if (juanmaPhoto) await database.run("UPDATE news SET image=?, updated_at=datetime('now') WHERE id=? AND image=''", juanmaPhoto, "liga-aula-empate-2026");
     await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('league_results_2026_27_j1_j2_20261026_v2','1')");
   }
+  const leaguePresentationRepair = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='league_presentation_repair_20261026_v3'");
+  if (!leaguePresentationRepair) {
+    const roster = await database.all<{ id: string; name: string; alias: string; photo: string }[]>("SELECT id,name,alias,photo FROM players");
+    const normalizePlayer = (value: string) => value.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es-ES");
+    const player = (name: string) => roster.find((item) => [item.name, item.alias].some((value) => normalizePlayer(value) === normalizePlayer(name)));
+    const moreno = player("Moreno");
+    const baroffi = player("Baroffi");
+    const aula = await database.get<{ events: string }>("SELECT events FROM matches WHERE id='liga-2026-27-aula'");
+    if (aula && moreno && baroffi) {
+      const events = JSON.parse(aula.events);
+      const goal = events.find((event: { type: string; player: string }) => event.type === "goal" && event.player === moreno.id) || events.find((event: { type: string }) => event.type === "goal");
+      if (goal) { goal.player = moreno.id; goal.relatedPlayer = baroffi.id; }
+      await database.run("UPDATE matches SET events=?, updated_at=datetime('now') WHERE id='liga-2026-27-aula'", JSON.stringify(events));
+    }
+    const juanjo = player("Juanjo");
+    const juanma = player("Juanma");
+    if (juanjo?.photo) await database.run("UPDATE news SET image=?, updated_at=datetime('now') WHERE id='amistoso-alacran-octubre-2026'", juanjo.photo);
+    if (juanma?.photo) await database.run("UPDATE news SET image=?, updated_at=datetime('now') WHERE id='liga-aula-empate-2026'", juanma.photo);
+    await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('league_presentation_repair_20261026_v3','1')");
+  }
   return database;
 }

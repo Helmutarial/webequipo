@@ -7,8 +7,8 @@ import { useTeam } from "@/components/team-context";
 import { calculateMatchMinutes } from "@/lib/player-stats";
 const roleByIndex = (index: number) => index === 0 ? "POR" : index < 5 ? "DEF" : index < 8 ? "MED" : "ATA";
 const formatDate = (date: string) => new Date(date).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-const GoalIcon = () => <svg className="match-event-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="m12 7 3 2-1 3h-4L9 9l3-2Zm-6 4 3-2m6-2 3 2m-8 8 2-5m2 0 2 5m-8 0 3 2m8-2-3 2" /></svg>;
-const AssistIcon = () => <svg className="match-event-icon assist" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 16c2 0 3-2 4-5l1-4 3 1-1 4 3 2 4 1c2 .5 2 3 0 3H9c-3 0-4-1-5-2Z" /><path d="M13 7 18 5m-1 4 2-3" /></svg>;
+const GoalIcon = () => <svg className="match-event-icon" viewBox="0 0 24 24" aria-label="Gol" role="img"><circle cx="12" cy="12" r="9" /><path d="m12 7 3 2.2-1.1 3.3h-3.8L9 9.2 12 7Zm-5.7 3.5 2.7-1.3m6-1.3 2.7 1.3m-10.7 7.5 3.1-4.2m3.8 0 3.1 4.2m-8.1.7 2.2 1.8m4.8-1.8-2.2 1.8" /></svg>;
+const AssistIcon = () => <svg className="match-event-icon assist" viewBox="0 0 24 24" aria-label="Asistencia" role="img"><path d="M4 17.5h13.5c1.7 0 2.5-1.8 1.3-3l-3.5-2-3.4-5.3-2.6.6 1.2 4.4-2.8 1.7-1.8-1.1-1.9 1.6Z" /><path d="M15 6.5h4m-2-2 2 2-2 2" /></svg>;
 
 export default function MatchPage() {
   const { id } = useParams<{ id: string }>();

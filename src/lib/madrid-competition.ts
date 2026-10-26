@@ -53,18 +53,37 @@ export async function syncOfficialCompetition(season = "2026/27") {
   const groupStandings = standingsRows.filter(sameGroup);
   const groupMatches = parseCsv(matchesCsv).filter(sameGroup);
   const database = await getDatabase();
+  const registeredMatches = await database.all<{ opponent: string; date: string; isHome: number; homeScore: number | null; awayScore: number | null }[]>("SELECT opponent,date,isHome,homeScore,awayScore FROM matches WHERE season=? AND competition LIKE 'Liga%' AND status='finished' AND homeScore IS NOT NULL AND awayScore IS NOT NULL", season);
+  const savedFixtures = await database.all<{ jornada: number; homeTeam: string; awayTeam: string; homeScore: number | null; awayScore: number | null; status: string }[]>("SELECT jornada,homeTeam,awayTeam,homeScore,awayScore,status FROM official_matches WHERE season=?", season);
+  const savedByFixture = new Map(savedFixtures.map((fixture) => [`${fixture.jornada}|${clean(fixture.homeTeam)}|${clean(fixture.awayTeam)}`, fixture]));
+  const registeredResult = (row: CsvRow) => {
+    const aldapanHome = clean(row.Equipo_local) === ALDAPAN;
+    const opponent = aldapanHome ? row.Equipo_visitante : row.Equipo_local;
+    const match = registeredMatches.find((item) => item.date.slice(0, 10) === row.Fecha && clean(item.opponent) === clean(opponent));
+    if (!match) return null;
+    return match.isHome !== 0 ? { homeScore: match.homeScore, awayScore: match.awayScore } : { homeScore: match.awayScore, awayScore: match.homeScore };
+  };
   const now = new Date().toISOString();
   await database.exec("BEGIN");
   try {
     await database.run("DELETE FROM official_standings WHERE season=?", season);
-    await database.run("DELETE FROM official_matches WHERE season=?", season);
     const standingStatement = await database.prepare("INSERT INTO official_standings (season,position,team,played,won,drawn,lost,goalsFor,goalsAgainst,points) VALUES (?,?,?,?,?,?,?,?,?,?)");
     for (const row of groupStandings) await standingStatement.run(season, number(row.Posicion), row.Nombre_equipo, number(row.Partidos_jugados), number(row.Partidos_ganados), number(row.Partidos_empatados), number(row.Partidos_perdidos), number(row.Goles_favor), number(row.Goles_contra), number(row.Puntos));
     await standingStatement.finalize();
-    const matchStatement = await database.prepare("INSERT INTO official_matches (season,jornada,homeTeam,awayTeam,homeScore,awayScore,date,time,venue,status) VALUES (?,?,?,?,?,?,?,?,?,?)");
+    const matchStatement = await database.prepare("INSERT INTO official_matches (season,jornada,homeTeam,awayTeam,homeScore,awayScore,date,time,venue,status) VALUES (?,?,?,?,?,?,?,?,?,?) ON CONFLICT(season,jornada,homeTeam,awayTeam) DO UPDATE SET homeScore=excluded.homeScore,awayScore=excluded.awayScore,date=excluded.date,time=excluded.time,venue=excluded.venue,status=excluded.status");
     for (const row of groupMatches) {
-      const finished = row.Estado === "F";
-      await matchStatement.run(season, number(row.Jornada), row.Equipo_local, row.Equipo_visitante, finished ? nullableScore(row.Resultado1) : null, finished ? nullableScore(row.Resultado2) : null, row.Fecha, row.Hora, row.Campo, row.Estado);
+      const jornada = number(row.Jornada);
+      const officialHomeScore = row.Estado === "F" ? nullableScore(row.Resultado1) : null;
+      const officialAwayScore = row.Estado === "F" ? nullableScore(row.Resultado2) : null;
+      const existing = savedByFixture.get(`${jornada}|${clean(row.Equipo_local)}|${clean(row.Equipo_visitante)}`);
+      const registered = registeredResult(row);
+      const hasOfficialResult = officialHomeScore !== null && officialAwayScore !== null;
+      const hasExistingResult = existing?.homeScore !== null && existing?.homeScore !== undefined && existing?.awayScore !== null && existing?.awayScore !== undefined;
+      const preserved = registered || (hasExistingResult ? existing : null);
+      const homeScore = hasOfficialResult ? officialHomeScore : preserved?.homeScore ?? null;
+      const awayScore = hasOfficialResult ? officialAwayScore : preserved?.awayScore ?? null;
+      const status = hasOfficialResult ? row.Estado : homeScore !== null && awayScore !== null ? "F" : row.Estado;
+      await matchStatement.run(season, jornada, row.Equipo_local, row.Equipo_visitante, homeScore, awayScore, row.Fecha, row.Hora, row.Campo, status);
     }
     await matchStatement.finalize();
     await database.run("INSERT OR REPLACE INTO official_sync (season,synced_at,source_url) VALUES (?,?,?)", season, now, STANDINGS_URL);
