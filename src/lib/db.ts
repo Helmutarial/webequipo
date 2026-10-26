@@ -19,6 +19,9 @@ async function initializeDatabase() {
   await fs.mkdir(dataDirectory, { recursive: true });
   const database = await open({ filename: path.join(dataDirectory, "team.db"), driver: sqlite3.Database });
   await database.exec(`CREATE TABLE IF NOT EXISTS app_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)`);
+  await database.exec(`CREATE TABLE IF NOT EXISTS official_standings (season TEXT NOT NULL, position INTEGER NOT NULL, team TEXT NOT NULL, played INTEGER NOT NULL, won INTEGER NOT NULL, drawn INTEGER NOT NULL, lost INTEGER NOT NULL, goalsFor INTEGER NOT NULL, goalsAgainst INTEGER NOT NULL, points INTEGER NOT NULL, PRIMARY KEY (season, team))`);
+  await database.exec(`CREATE TABLE IF NOT EXISTS official_matches (season TEXT NOT NULL, jornada INTEGER NOT NULL, homeTeam TEXT NOT NULL, awayTeam TEXT NOT NULL, homeScore INTEGER, awayScore INTEGER, date TEXT NOT NULL, time TEXT NOT NULL, venue TEXT NOT NULL, status TEXT NOT NULL, PRIMARY KEY (season, jornada, homeTeam, awayTeam))`);
+  await database.exec(`CREATE TABLE IF NOT EXISTS official_sync (season TEXT PRIMARY KEY, synced_at TEXT NOT NULL, source_url TEXT NOT NULL)`);
   await database.exec(`CREATE TABLE IF NOT EXISTS players (id TEXT PRIMARY KEY, name TEXT NOT NULL, alias TEXT NOT NULL DEFAULT '', number INTEGER NOT NULL, position TEXT NOT NULL DEFAULT 'Jugador', photo TEXT NOT NULL DEFAULT '', goals INTEGER NOT NULL DEFAULT 0, assists INTEGER NOT NULL DEFAULT 0, appearances INTEGER NOT NULL DEFAULT 0, minutes INTEGER NOT NULL DEFAULT 0, starterAppearances INTEGER NOT NULL DEFAULT 0, substituteAppearances INTEGER NOT NULL DEFAULT 0, mvpCount INTEGER NOT NULL DEFAULT 0, bio TEXT NOT NULL DEFAULT '', active INTEGER NOT NULL DEFAULT 1, updated_at TEXT NOT NULL)`);
   const columns = await database.all<{ name: string }[]>("PRAGMA table_info(players)");
   const existingColumns = new Set(columns.map((column) => column.name));

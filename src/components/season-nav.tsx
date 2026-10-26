@@ -9,6 +9,7 @@ const items = [
   { href: "/clasificacion", label: "Clasificación" },
   { href: "/rankings", label: "Rankings" },
   { href: "/calendario", label: "Calendario" },
+  { href: "/jornadas", label: "Jornadas" },
 ];
 
 export default function SeasonNav() {
