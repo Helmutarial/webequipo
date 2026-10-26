@@ -8,6 +8,7 @@ const crests: Record<string, string> = {
   "DRAGONESDELAVAPIESB": "/team-crests/dragones-de-lavapies-b.png",
   "ESCUELADEHORTALEZA": "/team-crests/escuela-de-hortaleza.png",
   "AVILAFC": "/team-crests/avila-fc.png",
+  "BOSTONTURRADORES": "/team-crests/boston-turradores.png",
 };
 
 export const getTeamCrest = (team: string) => crests[normalize(team)] || null;
