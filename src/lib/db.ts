@@ -84,6 +84,36 @@ async function initializeDatabase() {
     }
     await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('player_duplicate_cleanup_20261026','1')");
   }
+  const nameCorrection = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='player_name_correction_20261026'");
+  if (!nameCorrection) {
+    const players = await database.all<{ id: string; name: string; alias: string; photo: string; updated_at: string }[]>("SELECT id,name,alias,photo,updated_at FROM players");
+    const normalizeName = (value: string) => value.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es-ES");
+    const replacements = new Map<string, string>();
+    const jones = players.find((player) => [player.name, player.alias].some((value) => normalizeName(value) === "jones"));
+    const dan = players.find((player) => [player.name, player.alias].some((value) => normalizeName(value) === "dan"));
+    if (jones && dan && jones.id !== dan.id) replacements.set(dan.id, jones.id);
+    const juanmaPlayers = players.filter((player) => [player.name, player.alias].some((value) => ["juanma", "juamna"].includes(normalizeName(value))));
+    if (juanmaPlayers.length) {
+      const [juanma, ...copies] = [...juanmaPlayers].sort((a, b) => Number(Boolean(b.photo)) - Number(Boolean(a.photo)) || b.updated_at.localeCompare(a.updated_at));
+      await database.run("UPDATE players SET name='Juanma', alias='Juanma', updated_at=datetime('now') WHERE id=?", juanma.id);
+      for (const copy of copies) if (copy.id !== juanma.id) replacements.set(copy.id, juanma.id);
+    }
+    if (replacements.size) {
+      const matches = await database.all<{ id: string; starters: string; substitutes: string; events: string }[]>("SELECT id,starters,substitutes,events FROM matches");
+      for (const match of matches) {
+        const replace = (id: string) => replacements.get(id) || id;
+        const starters = JSON.parse(match.starters).map(replace);
+        const substitutes = JSON.parse(match.substitutes).map(replace);
+        const events = JSON.parse(match.events).map((event: { player: string; relatedPlayer?: string }) => ({ ...event, player: replace(event.player), relatedPlayer: event.relatedPlayer ? replace(event.relatedPlayer) : undefined }));
+        await database.run("UPDATE matches SET starters=?, substitutes=?, events=?, updated_at=datetime('now') WHERE id=?", JSON.stringify([...new Set(starters)]), JSON.stringify([...new Set(substitutes)]), JSON.stringify(events), match.id);
+      }
+      for (const [oldId, newId] of replacements) {
+        await database.run("UPDATE users SET playerId=? WHERE playerId=?", newId, oldId);
+        await database.run("DELETE FROM players WHERE id=?", oldId);
+      }
+    }
+    await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('player_name_correction_20261026','1')");
+  }
   await database.exec(`CREATE TABLE IF NOT EXISTS news (id TEXT PRIMARY KEY, title TEXT NOT NULL, slug TEXT NOT NULL UNIQUE, excerpt TEXT NOT NULL DEFAULT '', content TEXT NOT NULL DEFAULT '', tag TEXT NOT NULL DEFAULT 'CLUB', date TEXT NOT NULL, image TEXT NOT NULL DEFAULT '', accent TEXT NOT NULL DEFAULT 'gold', published INTEGER NOT NULL DEFAULT 1, updated_at TEXT NOT NULL)`);
   await database.exec(`CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE, passwordHash TEXT NOT NULL, name TEXT NOT NULL, playerId TEXT NOT NULL DEFAULT '', role TEXT NOT NULL DEFAULT 'USER', status TEXT NOT NULL DEFAULT 'PENDING', created_at TEXT NOT NULL, updated_at TEXT NOT NULL, approved_at TEXT)`);
   const demoNewsCleanup = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='news_seed_cleanup_20260723'");
