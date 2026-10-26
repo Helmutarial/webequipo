@@ -112,5 +112,38 @@ async function initializeDatabase() {
     "aldapan-atletico-jabalies-2026-09-20", "2026/27", "Atlético Jabalíes", "JAB", "2026-09-20T21:00:00", "Amistoso", "Campo Municipal - Gora", "finished", 1, 90, 4, 0, "[]", "[]",
     JSON.stringify([{ minute: 0, type: "goal", player: "ortiz", detail: "Aldapan Gora" }, { minute: 0, type: "goal", player: "ortiz", detail: "Aldapan Gora" }, { minute: 0, type: "goal", player: "ortiz", detail: "Aldapan Gora" }, { minute: 0, type: "goal", player: "corisco", detail: "Aldapan Gora" }, { minute: 90, type: "mvp", player: "ortiz" }]),
   );
+  const firstLeagueResults = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='league_results_2026_27_j1_j2_20261026'");
+  if (!firstLeagueResults) {
+    const tatoEvents = JSON.stringify([
+      { minute: 0, type: "goal", player: "juanjo", relatedPlayer: "caspilla", detail: "Aldapan Gora" },
+      { minute: 0, type: "goal", player: "Gol en propia puerta", detail: "TATO F.C." },
+      { minute: 0, type: "goal", player: "izan", detail: "Aldapan Gora" },
+      { minute: 5, type: "substitution", player: "juanma", relatedPlayer: "dan" },
+      { minute: 45, type: "substitution", player: "moreno", relatedPlayer: "caspilla" },
+      { minute: 45, type: "substitution", player: "juan-baroffi", relatedPlayer: "izan" },
+      { minute: 55, type: "substitution", player: "padri", relatedPlayer: "juanjo" },
+      { minute: 65, type: "substitution", player: "urko", relatedPlayer: "rey" },
+      { minute: 90, type: "mvp", player: "izan" },
+    ]);
+    const aulaEvents = JSON.stringify([
+      { minute: 0, type: "goal", player: "moreno", relatedPlayer: "juan-baroffi", detail: "Aldapan Gora" },
+      { minute: 0, type: "goal", player: "ortiz", detail: "Aldapan Gora" },
+      { minute: 45, type: "substitution", player: "izan", relatedPlayer: "mauro-m" },
+      { minute: 45, type: "substitution", player: "rey", relatedPlayer: "ortiz" },
+      { minute: 45, type: "substitution", player: "padri", relatedPlayer: "juan-baroffi" },
+      { minute: 60, type: "substitution", player: "ivan", relatedPlayer: "moreno" },
+      { minute: 70, type: "substitution", player: "pedro", relatedPlayer: "juanjo" },
+      { minute: 70, type: "substitution", player: "urko", relatedPlayer: "molinpower" },
+      { minute: 80, type: "substitution", player: "mario", relatedPlayer: "corisco" },
+      { minute: 90, type: "mvp", player: "juanma" },
+    ]);
+    await database.run("UPDATE matches SET status='finished', homeScore=3, awayScore=3, starters=?, substitutes=?, events=?, updated_at=datetime('now') WHERE id=?", JSON.stringify(["javi", "dan", "mauro-m", "dani", "molinpower", "corisco", "juanjo", "ortiz", "caspilla", "izan", "rey"]), JSON.stringify(["juanma", "moreno", "juan-baroffi", "padri", "urko"]), tatoEvents, "liga-2026-27-tato");
+    await database.run("UPDATE matches SET status='finished', homeScore=2, awayScore=2, starters=?, substitutes=?, events=?, updated_at=datetime('now') WHERE id=?", JSON.stringify(["javi", "krepox", "juanma", "mauro-m", "dani", "molinpower", "corisco", "juan-baroffi", "ortiz", "moreno", "juanjo"]), JSON.stringify(["izan", "rey", "padri", "ivan", "pedro", "urko", "mario"]), aulaEvents, "liga-2026-27-aula");
+    const izanPhoto = (await database.get<{ photo: string }>("SELECT photo FROM players WHERE id='izan'"))?.photo || "";
+    const juanmaPhoto = (await database.get<{ photo: string }>("SELECT photo FROM players WHERE id='juanma'"))?.photo || "";
+    await database.run("INSERT OR IGNORE INTO news (id,title,slug,excerpt,content,tag,date,image,accent,published,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,datetime('now'))", "liga-tato-empate-2026", "Izan rescata un punto en el estreno liguero", "izan-rescata-un-punto-en-el-estreno-liguero", "El Aldapan Gora firma un 3–3 ante TATO F.C. en una jornada de reacción y carácter.", "El Aldapan Gora abrió la liga con un empate a tres ante TATO F.C. Juanjo inauguró el marcador tras una asistencia de Jare, el segundo llegó en propia puerta y Izan puso el tercero. El equipo tuvo que rehacerse pronto a la lesión de Dan, sustituido por Juanma en el minuto 5, y siguió compitiendo hasta el final. Izan, autor del último tanto, fue elegido MVP del encuentro.", "PARTIDOS", "2026-10-18", izanPhoto, "gold", 1);
+    await database.run("INSERT OR IGNORE INTO news (id,title,slug,excerpt,content,tag,date,image,accent,published,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,datetime('now'))", "liga-aula-empate-2026", "Juanma lidera otro empate de mucho oficio", "juanma-lidera-otro-empate-de-mucho-oficio", "El Aldapan Gora empata 2–2 frente a AULA C.F. y suma su segundo punto de la temporada.", "El Aldapan Gora volvió a competir hasta el final para sacar un 2–2 ante AULA C.F. Moreno abrió el marcador tras una asistencia de Baroffi y Ortiz anotó el segundo. El equipo repartió esfuerzos con siete cambios durante el encuentro, con la entrada de Izan, Rey y Padri tras el descanso. Juanma fue elegido MVP por su trabajo y liderazgo en el centro del campo.", "PARTIDOS", "2026-10-25", juanmaPhoto, "dark", 1);
+    await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('league_results_2026_27_j1_j2_20261026','1')");
+  }
   return database;
 }

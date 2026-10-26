@@ -44,6 +44,9 @@ initialPlayers.push({ id: "dani", name: "Dani", alias: "Dani", number: 15, posit
 initialPlayers.push(
   ...["Juanjo", "Padri", "Gerardo", "Carlos"].map((name) => ({ id: name.toLowerCase(), name, alias: name, number: 0, position: "Jugador", photo: "", goals: 0, assists: 0, appearances: 0, minutes: 0, starterAppearances: 0, substituteAppearances: 0, mvpCount: 0, bio: "Jugador del Aldapan Gora.", active: true })),
 );
+initialPlayers.push(
+  ...[["javi", "Javi", "POR"], ["dan", "Dan", "DFC"], ["juanma", "Juanma", "MC"], ["izan", "Izan", "MC"]].map(([id, name, position]) => ({ id, name, alias: name, number: 0, position, photo: "", goals: 0, assists: 0, appearances: 0, minutes: 0, starterAppearances: 0, substituteAppearances: 0, mvpCount: 0, bio: "Jugador del Aldapan Gora.", active: true })),
+);
 
 const removedPlayerIds = new Set(["zuha", "beltran-jr", "joaquinho", "tono", "d-plaza", "juanorro", "luaces", "saul"]);
 for (let index = initialPlayers.length - 1; index >= 0; index--) if (removedPlayerIds.has(initialPlayers[index].id)) initialPlayers.splice(index, 1);

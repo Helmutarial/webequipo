@@ -31,9 +31,9 @@ export default function StandingsPage() {
     <section className="standings-card">
       <div className="detail-card-heading"><h2>Tabla</h2><span>{official?.standings.length ? `Oficial · ${formatOfficialSync(official.syncedAt)}` : loading ? "Cargando clasificación oficial…" : visibleSeason === "2025/26" ? "Fuente: jdmmadrid.es" : "Pendiente de sincronización oficial"}</span></div>
       <div className="standings-table">
-        <div className="standings-head"><span>Pos</span><span>Equipo</span><span>PJ</span><span>DG</span><span>Pts</span></div>
+        <div className="standings-head"><span>Pos</span><span>Equipo</span><span>PJ</span><span>GF</span><span>GC</span><span>DG</span><span>Pts</span></div>
         {visibleStandings.map((team) => <div className={team.team.toUpperCase().includes("ALDAPAN GORA") ? "standings-row highlight" : "standings-row"} key={team.team}>
-          <span>{team.position}</span><strong>{team.team}</strong><span>{team.played}</span><span>{team.goalsFor - team.goalsAgainst}</span><b>{team.points}</b>
+          <span>{team.position}</span><strong>{team.team}</strong><span>{team.played}</span><span>{team.goalsFor}</span><span>{team.goalsAgainst}</span><span>{team.goalsFor - team.goalsAgainst}</span><b>{team.points}</b>
         </div>)}
       </div>
     </section>

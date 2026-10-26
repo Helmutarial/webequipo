@@ -17,10 +17,10 @@ export default function MatchesPage() {
   const leagueMatches = matches
     .filter((match) => getMatchSeason(match) === visibleSeason && match.competition.startsWith("Liga"))
     .sort((first, second) => {
-      const firstUpcoming = new Date(first.date).getTime() >= now;
-      const secondUpcoming = new Date(second.date).getTime() >= now;
-      if (firstUpcoming !== secondUpcoming) return firstUpcoming ? -1 : 1;
-      return firstUpcoming ? first.date.localeCompare(second.date) : second.date.localeCompare(first.date);
+      const firstPlayedDate = new Date(first.date).getTime() < now;
+      const secondPlayedDate = new Date(second.date).getTime() < now;
+      if (firstPlayedDate !== secondPlayedDate) return firstPlayedDate ? -1 : 1;
+      return firstPlayedDate ? second.date.localeCompare(first.date) : first.date.localeCompare(second.date);
     });
 
   return <main className="content-page shell">
@@ -32,10 +32,10 @@ export default function MatchesPage() {
       </div><label className="season-selector">Temporada<select value={visibleSeason} onChange={(event) => setSelectedSeason(event.target.value)}>{seasons.map((season) => <option value={season} key={season}>{season}</option>)}</select></label>
     </div>
     <SeasonNav />
-    {loading ? <p className="muted">Cargando partidos…</p> : <div className="matches-list">{leagueMatches.map((match) => <Link className="match-card" href={`/partidos/${encodeURIComponent(match.id)}`} key={match.id} aria-label={`Ver ficha de Aldapan Gora contra ${match.opponent}`}>
+    {loading ? <p className="muted">Cargando partidos…</p> : <div className="matches-list">{leagueMatches.map((match) => { const resultPending = match.status === "upcoming" && new Date(match.date).getTime() < now; return <Link className="match-card" href={`/partidos/${encodeURIComponent(match.id)}`} key={match.id} aria-label={`Ver ficha de Aldapan Gora contra ${match.opponent}`}>
       <div className="match-card-date"><span>{formatDate(match.date)}</span><small>{match.competition}</small></div>
       <div className="match-card-teams">{match.status === "bye" ? <strong className="bye-score">DESCANSO</strong> : <><div><b>{match.isHome !== false ? "Aldapan Gora" : match.opponent}</b><span>{match.isHome !== false ? "ALG" : match.opponentShort}</span></div><strong>{match.isHome !== false ? match.homeScore ?? "—" : match.awayScore ?? "—"} — {match.isHome !== false ? match.awayScore ?? "—" : match.homeScore ?? "—"}</strong><div><span>{match.isHome !== false ? match.opponentShort : "ALG"}</span><b>{match.isHome !== false ? match.opponent : "Aldapan Gora"}</b></div></>}</div>
-      <div className="match-card-meta"><span>{match.status === "finished" ? "FINALIZADO" : match.status === "bye" ? "JORNADA DE DESCANSO" : "PRÓXIMO"}</span><small>{match.venue || "Sin partido"}</small><strong className="match-card-action">Ver ficha →</strong></div>
-    </Link>)}</div>}
+      <div className="match-card-meta"><span>{match.status === "finished" ? "FINALIZADO" : match.status === "bye" ? "JORNADA DE DESCANSO" : resultPending ? "RESULTADO PENDIENTE" : "PRÓXIMO"}</span><small>{match.venue || "Sin partido"}</small><strong className="match-card-action">Ver ficha →</strong></div>
+    </Link>; })}</div>}
   </main>;
 }
