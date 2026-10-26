@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import SeasonNav from "@/components/season-nav";
 import { useMatches } from "@/components/matches-context";
 import { getMatchSeason, getSeasons } from "@/lib/season-utils";
+import { getTeamCrest } from "@/lib/team-crests";
 
 const formatDate = (date: string) => new Date(date).toLocaleDateString("es-ES", { weekday: "short", day: "2-digit", month: "short", year: "numeric" }).toUpperCase();
 
@@ -23,7 +24,7 @@ export default function FriendliesPage() {
     <SeasonNav />
     {loading ? <p className="muted">Cargando amistosos…</p> : friendlies.length ? <div className="matches-list">{friendlies.map((match) => <Link className="match-card" href={`/partidos/${encodeURIComponent(match.id)}`} key={match.id} aria-label={`Ver ficha del amistoso contra ${match.opponent}`}>
       <div className="match-card-date"><span>{formatDate(match.date)}</span><small>{match.competition}</small></div>
-      <div className="match-card-teams"><div><b>{match.isHome !== false ? "Aldapan Gora" : match.opponent}</b><span>{match.isHome !== false ? "ALG" : match.opponentShort}</span></div><strong>{match.isHome !== false ? match.homeScore ?? "—" : match.awayScore ?? "—"} — {match.isHome !== false ? match.awayScore ?? "—" : match.homeScore ?? "—"}</strong><div><span>{match.isHome !== false ? match.opponentShort : "ALG"}</span><b>{match.isHome !== false ? match.opponent : "Aldapan Gora"}</b></div></div>
+      <div className="match-card-teams"><div className="match-team home"><b>{match.isHome !== false ? "Aldapan Gora" : match.opponent}</b><span>{match.isHome !== false ? "ALG" : match.opponentShort}</span></div>{getTeamCrest(match.isHome !== false ? "Aldapan Gora FC" : match.opponent) ? <img className="match-team-crest" src={getTeamCrest(match.isHome !== false ? "Aldapan Gora FC" : match.opponent)!} alt={`Escudo de ${match.isHome !== false ? "Aldapan Gora" : match.opponent}`} /> : <i className="match-team-crest-placeholder" />}<strong>{match.isHome !== false ? match.homeScore ?? "—" : match.awayScore ?? "—"} — {match.isHome !== false ? match.awayScore ?? "—" : match.homeScore ?? "—"}</strong>{getTeamCrest(match.isHome !== false ? match.opponent : "Aldapan Gora FC") ? <img className="match-team-crest" src={getTeamCrest(match.isHome !== false ? match.opponent : "Aldapan Gora FC")!} alt={`Escudo de ${match.isHome !== false ? match.opponent : "Aldapan Gora"}`} /> : <i className="match-team-crest-placeholder" />}<div className="match-team away"><span>{match.isHome !== false ? match.opponentShort : "ALG"}</span><b>{match.isHome !== false ? match.opponent : "Aldapan Gora"}</b></div></div>
       <div className="match-card-meta"><span>{match.status === "finished" ? "FINALIZADO" : "PRÓXIMO"}</span><small>{match.venue || "Campo por confirmar"}</small><strong className="match-card-action">Ver ficha →</strong></div>
     </Link>)}</div> : <p className="muted">Aún no hay amistosos en esta temporada.</p>}
   </main>;

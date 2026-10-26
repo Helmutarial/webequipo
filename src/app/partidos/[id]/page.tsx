@@ -4,9 +4,9 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMatches } from "@/components/matches-context";
 import { useTeam } from "@/components/team-context";
-import { calculateMatchMinutes } from "@/lib/player-stats";
 const roleByIndex = (index: number) => index === 0 ? "POR" : index < 5 ? "DEF" : index < 8 ? "MED" : "ATA";
 const formatDate = (date: string) => new Date(date).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+const normalize = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/gi, "").toLowerCase();
 const GoalIcon = () => <svg className="match-event-icon" viewBox="0 0 24 24" aria-label="Gol" role="img"><circle cx="12" cy="12" r="9" /><path d="m12 7 3 2.2-1.1 3.3h-3.8L9 9.2 12 7Zm-5.7 3.5 2.7-1.3m6-1.3 2.7 1.3m-10.7 7.5 3.1-4.2m3.8 0 3.1 4.2m-8.1.7 2.2 1.8m4.8-1.8-2.2 1.8" /></svg>;
 const AssistIcon = () => <svg className="match-event-icon assist" viewBox="0 0 24 24" aria-label="Asistencia" role="img"><path d="M4 17.5h13.5c1.7 0 2.5-1.8 1.3-3l-3.5-2-3.4-5.3-2.6.6 1.2 4.4-2.8 1.7-1.8-1.1-1.9 1.6Z" /><path d="M15 6.5h4m-2-2 2 2-2 2" /></svg>;
 
@@ -15,23 +15,35 @@ export default function MatchPage() {
   const { matches, loading } = useMatches();
   const { players } = useTeam();
   const match = matches.find((item) => item.id === id);
-  const playerName = (playerId: string) => players.find((player) => player.id === playerId)?.name || playerId;
+  const playerFor = (reference: string | undefined) => players.find((player) => player.id === reference || normalize(player.id) === normalize(reference || "") || normalize(player.id.split("-").at(-1) || "") === normalize(reference || ""));
+  const playerName = (playerId: string) => playerFor(playerId)?.name || playerId;
 
   if (loading) return <main className="content-page shell"><p className="muted">Cargando partido...</p></main>;
-  if (!match) return <main className="content-page shell"><h1>Partido no encontrado<span>.</span></h1><Link className="text-link" href="/partidos">Volver a partidos</Link></main>;
+  if (!match) return <main className="content-page shell"><h1>Partido no encontrado<span>.</span></h1><Link className="text-link" href="/jornadas">Volver a jornadas</Link></main>;
 
   const goals = match.events.filter((event) => event.type === "goal");
   const substitutions = match.events.filter((event) => event.type === "substitution");
-  const minutes = calculateMatchMinutes(match, players.map((player) => player.id));
   const mvp = match.events.find((event) => event.type === "mvp");
-  const mvpPlayer = mvp ? players.find((player) => player.id === mvp.player) : undefined;
-  const substitutionIn = new Map(substitutions.map((event) => [event.player, event.minute]));
-  const substitutionOut = new Map(substitutions.map((event) => [event.relatedPlayer, event.minute]));
+  const mvpPlayer = mvp ? playerFor(mvp.player) : undefined;
+  const substitutionIn = new Map(substitutions.map((event) => [playerFor(event.player)?.id || event.player, event.minute]));
+  const substitutionOut = new Map(substitutions.map((event) => [playerFor(event.relatedPlayer)?.id || event.relatedPlayer, event.minute]));
   const hasLineup = match.starters.length || match.substitutes.length;
   const aldapanFirst = match.isHome !== false;
+  const eventMarks = new Map<string, { goals: number; assists: number }>();
+  for (const event of goals) {
+    const scorer = playerFor(event.player)?.id; const assistant = playerFor(event.relatedPlayer)?.id;
+    if (scorer) eventMarks.set(scorer, { ...(eventMarks.get(scorer) || { goals: 0, assists: 0 }), goals: (eventMarks.get(scorer)?.goals || 0) + 1 });
+    if (assistant) eventMarks.set(assistant, { ...(eventMarks.get(assistant) || { goals: 0, assists: 0 }), assists: (eventMarks.get(assistant)?.assists || 0) + 1 });
+  }
+  const starterId = (name: string) => match.starters.find((reference) => normalize(playerName(reference)) === normalize(name) || normalize(reference) === normalize(name));
+  const preferredFormation = match.id === "liga-2026-27-aula"
+    ? [["Juanjo"], ["Moreno", "Baroffi", "Ortiz"], ["Sergio", "Molina"], ["Dani", "Mauro", "Juanma", "Martin"], ["Javi"]]
+    : [["Juanjo"], ["Ortiz", "Sergio", "Jare"], ["Izan", "Molina"], ["Dani", "Mauro", "Rey", "Dan"], ["Javi"]];
+  const placedStarters = preferredFormation.flat().map(starterId).filter((playerId): playerId is string => Boolean(playerId));
+  const formation = [...preferredFormation.map((row) => row.map(starterId).filter((playerId): playerId is string => Boolean(playerId))), ...match.starters.filter((playerId) => !placedStarters.includes(playerId)).map((playerId) => [playerId])];
 
   return <main className="content-page shell match-detail">
-    <Link className="text-link" href="/partidos">Volver a partidos</Link>
+    <Link className="text-link" href={match.competition.startsWith("Liga") ? "/jornadas" : "/amistosos"}>Volver a {match.competition.startsWith("Liga") ? "jornadas" : "amistosos"}</Link>
     <header className="match-detail-header">
       <span className="section-label">{match.competition} - {formatDate(match.date)}</span>
       <div className="match-scoreboard">
@@ -40,7 +52,26 @@ export default function MatchPage() {
       <p>{match.venue || "Sin partido"} - {match.status === "finished" ? `Finalizado · ${match.duration || 90}'` : match.status === "bye" ? "Jornada de descanso" : "Próximo partido"}</p>
     </header>
 
-    {hasLineup ? <section className="match-detail-card lineup-overview-card">
+    {hasLineup && match.competition.startsWith("Liga") ? <section className="match-detail-card league-lineup-card">
+      <div className="league-lineup-layout">
+        <div className="league-pitch-panel">
+          <div className="detail-card-heading"><h2>Alineación</h2><span>{match.starters.length} jugadores</span></div>
+          <div className="league-pitch">
+            <i className="league-halfway" /><i className="league-circle" /><i className="league-box top" /><i className="league-box bottom" />
+            <div className="league-formation">{formation.map((row, rowIndex) => <div className={`league-line league-line-${rowIndex}`} key={rowIndex}>{row.map((playerId) => {
+              const player = playerFor(playerId); const marks = eventMarks.get(player?.id || playerId);
+              return <div className="league-player" key={playerId}>{player?.photo ? <img src={player.photo} alt={player.name} /> : <span className="league-player-placeholder">{playerName(playerId).slice(0, 1)}</span>}<b>{playerName(playerId)}</b>{player?.number ? <i>#{player.number}</i> : null}{marks?.goals ? <em className="league-event goal"><GoalIcon />{marks.goals > 1 ? marks.goals : null}</em> : null}{marks?.assists ? <em className="league-event assist"><AssistIcon />{marks.assists > 1 ? marks.assists : null}</em> : null}{substitutionOut.has(player?.id || playerId) ? <small>CAM {substitutionOut.get(player?.id || playerId)}'</small> : null}</div>;
+            })}</div>)}</div>
+          </div>
+        </div>
+        <aside className="league-bench-panel">
+          <div className="detail-card-heading"><h2>Cambios</h2><span>{substitutions.length}</span></div>
+          <div className="league-changes">{substitutions.map((event, index) => <div key={`${event.player}-${index}`}><time>{event.minute}'</time><span>{playerName(event.relatedPlayer || "")}</span><b>→</b><strong>{playerName(event.player)}</strong></div>)}</div>
+          <h3>Suplentes</h3>
+          <div className="league-bench-photos">{match.substitutes.map((playerId) => { const player = playerFor(playerId); const enteredAt = substitutionIn.get(player?.id || playerId); return <div key={playerId}>{player?.photo ? <img src={player.photo} alt={player.name} /> : <span>{playerName(playerId).slice(0, 1)}</span>}<b>{playerName(playerId)}</b>{enteredAt ? <small>{enteredAt}'</small> : null}</div>; })}</div>
+        </aside>
+      </div>
+    </section> : hasLineup ? <section className="match-detail-card lineup-overview-card">
       <div className="detail-card-heading">
         <h2>Alineacion titular</h2>
         <span>{match.starters.length} jugadores</span>
@@ -66,10 +97,6 @@ export default function MatchPage() {
           </div>;
         })}
       </div>
-      {minutes.length ? <div className="public-minutes-summary">
-        <h3 className="bench-title">Minutos jugados</h3>
-        <div>{minutes.map((row) => <span key={row.playerId}><b>{playerName(row.playerId)}</b><i>{row.minutes}'</i></span>)}</div>
-      </div> : null}
     </section> : null}
 
     <section className="match-detail-card match-summary-card">
