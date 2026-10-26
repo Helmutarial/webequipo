@@ -15,7 +15,8 @@ function withRegisteredResult(fixture: OfficialMatch, matches: ReturnType<typeof
   const aldapanHome = normalize(fixture.homeTeam).includes("ALDAPAN");
   const opponent = aldapanHome ? fixture.awayTeam : fixture.homeTeam;
   const registered = matches.find((match) => getMatchSeason(match) === season && match.competition.startsWith("Liga") && match.status === "finished" && match.date.slice(0, 10) === fixture.date && normalize(match.opponent) === normalize(opponent));
-  if (!registered || registered.homeScore === null || registered.awayScore === null) return fixture;
+  // Los marcadores del Aldapan solo proceden de los partidos registrados por el club.
+  if (!registered || registered.homeScore === null || registered.awayScore === null) return aldapanHome || normalize(fixture.awayTeam).includes("ALDAPAN") ? { ...fixture, homeScore: null, awayScore: null } : fixture;
   return { ...fixture, homeScore: registered.isHome !== false ? registered.homeScore : registered.awayScore, awayScore: registered.isHome !== false ? registered.awayScore : registered.homeScore, status: "F" };
 }
 

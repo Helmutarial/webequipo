@@ -20,8 +20,11 @@ function standingsWithRegisteredResults(official: OfficialCompetition | null, ma
     else { const winner = homeScore > awayScore ? home : away; const loser = winner === home ? away : home; winner.won += 1; loser.lost += 1; winner.points += 3; }
   };
   for (const fixture of official.matches) {
+    const isAldapanFixture = normalize(fixture.homeTeam).includes("ALDAPAN") || normalize(fixture.awayTeam).includes("ALDAPAN");
     const opponent = normalize(fixture.homeTeam).includes("ALDAPAN") ? fixture.awayTeam : fixture.homeTeam;
     const recorded = matches.find((match) => match.season === season && match.competition.startsWith("Liga") && match.status === "finished" && match.date.slice(0, 10) === fixture.date && normalize(match.opponent) === normalize(opponent));
+    // Nunca incorporamos a la tabla un marcador de Aldapan que no haya registrado el club.
+    if (isAldapanFixture && !recorded) continue;
     const homeScore = recorded ? (recorded.isHome !== false ? recorded.homeScore : recorded.awayScore) : fixture.homeScore;
     const awayScore = recorded ? (recorded.isHome !== false ? recorded.awayScore : recorded.homeScore) : fixture.awayScore;
     if (homeScore !== null && awayScore !== null) addResult(fixture.homeTeam, fixture.awayTeam, homeScore, awayScore);

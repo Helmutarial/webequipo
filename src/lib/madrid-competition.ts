@@ -54,8 +54,6 @@ export async function syncOfficialCompetition(season = "2026/27") {
   const groupMatches = parseCsv(matchesCsv).filter(sameGroup);
   const database = await getDatabase();
   const registeredMatches = await database.all<{ opponent: string; date: string; isHome: number; homeScore: number | null; awayScore: number | null }[]>("SELECT opponent,date,isHome,homeScore,awayScore FROM matches WHERE season=? AND competition LIKE 'Liga%' AND status='finished' AND homeScore IS NOT NULL AND awayScore IS NOT NULL", season);
-  const savedFixtures = await database.all<{ jornada: number; homeTeam: string; awayTeam: string; homeScore: number | null; awayScore: number | null; status: string }[]>("SELECT jornada,homeTeam,awayTeam,homeScore,awayScore,status FROM official_matches WHERE season=?", season);
-  const savedByFixture = new Map(savedFixtures.map((fixture) => [`${fixture.jornada}|${clean(fixture.homeTeam)}|${clean(fixture.awayTeam)}`, fixture]));
   const registeredResult = (row: CsvRow) => {
     const aldapanHome = clean(row.Equipo_local) === ALDAPAN;
     const opponent = aldapanHome ? row.Equipo_visitante : row.Equipo_local;
@@ -73,16 +71,15 @@ export async function syncOfficialCompetition(season = "2026/27") {
     const matchStatement = await database.prepare("INSERT INTO official_matches (season,jornada,homeTeam,awayTeam,homeScore,awayScore,date,time,venue,status) VALUES (?,?,?,?,?,?,?,?,?,?) ON CONFLICT(season,jornada,homeTeam,awayTeam) DO UPDATE SET homeScore=excluded.homeScore,awayScore=excluded.awayScore,date=excluded.date,time=excluded.time,venue=excluded.venue,status=excluded.status");
     for (const row of groupMatches) {
       const jornada = number(row.Jornada);
+      const isAldapanFixture = clean(row.Equipo_local) === ALDAPAN || clean(row.Equipo_visitante) === ALDAPAN;
+      const registered = registeredResult(row);
+      // El acta del Aldapan la gestiona el club: jamás tomamos su marcador del CSV.
+      // El resto de encuentros sí se reemplaza siempre por la última fuente oficial.
       const officialHomeScore = row.Estado === "F" ? nullableScore(row.Resultado1) : null;
       const officialAwayScore = row.Estado === "F" ? nullableScore(row.Resultado2) : null;
-      const existing = savedByFixture.get(`${jornada}|${clean(row.Equipo_local)}|${clean(row.Equipo_visitante)}`);
-      const registered = registeredResult(row);
-      const hasOfficialResult = officialHomeScore !== null && officialAwayScore !== null;
-      const hasExistingResult = existing?.homeScore !== null && existing?.homeScore !== undefined && existing?.awayScore !== null && existing?.awayScore !== undefined;
-      const preserved = registered || (hasExistingResult ? existing : null);
-      const homeScore = hasOfficialResult ? officialHomeScore : preserved?.homeScore ?? null;
-      const awayScore = hasOfficialResult ? officialAwayScore : preserved?.awayScore ?? null;
-      const status = hasOfficialResult ? row.Estado : homeScore !== null && awayScore !== null ? "F" : row.Estado;
+      const homeScore = isAldapanFixture ? registered?.homeScore ?? null : officialHomeScore;
+      const awayScore = isAldapanFixture ? registered?.awayScore ?? null : officialAwayScore;
+      const status = isAldapanFixture && homeScore !== null && awayScore !== null ? "F" : row.Estado;
       await matchStatement.run(season, jornada, row.Equipo_local, row.Equipo_visitante, homeScore, awayScore, row.Fecha, row.Hora, row.Campo, status);
     }
     await matchStatement.finalize();
