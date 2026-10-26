@@ -5,6 +5,7 @@ import SeasonNav from "@/components/season-nav";
 import { useMatches } from "@/components/matches-context";
 import { useMemo, useState } from "react";
 import { getMatchSeason, getSeasons } from "@/lib/season-utils";
+import { getTeamCrest } from "@/lib/team-crests";
 
 const formatDate = (date: string) => new Date(date).toLocaleDateString("es-ES", { weekday: "short", day: "2-digit", month: "short", year: "numeric" }).toUpperCase();
 
@@ -34,7 +35,7 @@ export default function MatchesPage() {
     <SeasonNav />
     {loading ? <p className="muted">Cargando partidos…</p> : <div className="matches-list">{leagueMatches.map((match) => { const resultPending = match.status === "upcoming" && new Date(match.date).getTime() < now; return <Link className="match-card" href={`/partidos/${encodeURIComponent(match.id)}`} key={match.id} aria-label={`Ver ficha de Aldapan Gora contra ${match.opponent}`}>
       <div className="match-card-date"><span>{formatDate(match.date)}</span><small>{match.competition}</small></div>
-      <div className="match-card-teams">{match.status === "bye" ? <strong className="bye-score">DESCANSO</strong> : <><div><b>{match.isHome !== false ? "Aldapan Gora" : match.opponent}</b><span>{match.isHome !== false ? "ALG" : match.opponentShort}</span></div><strong>{match.isHome !== false ? match.homeScore ?? "—" : match.awayScore ?? "—"} — {match.isHome !== false ? match.awayScore ?? "—" : match.homeScore ?? "—"}</strong><div><span>{match.isHome !== false ? match.opponentShort : "ALG"}</span><b>{match.isHome !== false ? match.opponent : "Aldapan Gora"}</b></div></>}</div>
+      <div className="match-card-teams">{match.status === "bye" ? <strong className="bye-score">DESCANSO</strong> : <><div><b>{match.isHome !== false ? "Aldapan Gora" : match.opponent}</b><span>{match.isHome !== false ? "ALG" : match.opponentShort}</span>{getTeamCrest(match.isHome !== false ? "Aldapan Gora FC" : match.opponent) ? <img className="match-team-crest" src={getTeamCrest(match.isHome !== false ? "Aldapan Gora FC" : match.opponent)!} alt="" /> : null}</div><strong>{match.isHome !== false ? match.homeScore ?? "—" : match.awayScore ?? "—"} — {match.isHome !== false ? match.awayScore ?? "—" : match.homeScore ?? "—"}</strong><div><span>{match.isHome !== false ? match.opponentShort : "ALG"}</span><b>{match.isHome !== false ? match.opponent : "Aldapan Gora"}</b>{getTeamCrest(match.isHome !== false ? match.opponent : "Aldapan Gora FC") ? <img className="match-team-crest" src={getTeamCrest(match.isHome !== false ? match.opponent : "Aldapan Gora FC")!} alt="" /> : null}</div></>}</div>
       <div className="match-card-meta"><span>{match.status === "finished" ? "FINALIZADO" : match.status === "bye" ? "JORNADA DE DESCANSO" : resultPending ? "RESULTADO PENDIENTE" : "PRÓXIMO"}</span><small>{match.venue || "Sin partido"}</small><strong className="match-card-action">Ver ficha →</strong></div>
     </Link>; })}</div>}
   </main>;

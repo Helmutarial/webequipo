@@ -7,6 +7,8 @@ import { useTeam } from "@/components/team-context";
 import { calculateMatchMinutes } from "@/lib/player-stats";
 const roleByIndex = (index: number) => index === 0 ? "POR" : index < 5 ? "DEF" : index < 8 ? "MED" : "ATA";
 const formatDate = (date: string) => new Date(date).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+const GoalIcon = () => <svg className="match-event-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="m12 7 3 2-1 3h-4L9 9l3-2Zm-6 4 3-2m6-2 3 2m-8 8 2-5m2 0 2 5m-8 0 3 2m8-2-3 2" /></svg>;
+const AssistIcon = () => <svg className="match-event-icon assist" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 16c2 0 3-2 4-5l1-4 3 1-1 4 3 2 4 1c2 .5 2 3 0 3H9c-3 0-4-1-5-2Z" /><path d="M13 7 18 5m-1 4 2-3" /></svg>;
 
 export default function MatchPage() {
   const { id } = useParams<{ id: string }>();
@@ -72,7 +74,7 @@ export default function MatchPage() {
 
     <section className="match-detail-card match-summary-card">
       <div className="detail-card-heading"><h2>Resumen del partido</h2><span>{goals.length} goles</span></div>
-      <div className="scorer-summary">{goals.map((goal, index) => <div key={`${goal.player}-${index}`}><strong><b aria-hidden="true">⚽</b>{playerName(goal.player)}</strong><span>Gol</span>{goal.relatedPlayer ? <small><b aria-hidden="true">🦶</b> Asistencia: {playerName(goal.relatedPlayer)}</small> : null}</div>)}</div>
+      <div className="scorer-summary">{goals.map((goal, index) => <div key={`${goal.player}-${index}`}><strong><GoalIcon />{playerName(goal.player)}</strong><span>Gol</span>{goal.relatedPlayer ? <small><AssistIcon />Asistencia: {playerName(goal.relatedPlayer)}</small> : null}</div>)}</div>
     </section>
     {mvp ? <section className="match-detail-card match-mvp-spotlight">
       <div><span className="section-label">JUGADOR DEL PARTIDO</span><h2>MVP: {playerName(mvp.player)}</h2><p>{mvpPlayer?.alias || "Partido enorme de principio a fin."}</p></div>
