@@ -29,11 +29,27 @@ async function initializeDatabase() {
     if (!existingColumns.has(name)) await database.exec(`ALTER TABLE players ADD COLUMN ${name} ${definition}`);
   }
   const playerCountBeforeSeed = await database.get<{ count: number }>("SELECT COUNT(*) as count FROM players");
-  const statement = await database.prepare("INSERT OR IGNORE INTO players (id,name,alias,number,position,photo,goals,assists,appearances,minutes,starterAppearances,substituteAppearances,mvpCount,bio,active,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))");
-  for (const player of initialPlayers) await statement.run(player.id, player.name, player.alias, player.number, player.position, player.photo, player.goals, player.assists, player.appearances, player.minutes, player.starterAppearances, player.substituteAppearances, player.mvpCount, player.bio, player.active ? 1 : 0);
-  await statement.finalize();
+  if (!playerCountBeforeSeed?.count) {
+    const statement = await database.prepare("INSERT OR IGNORE INTO players (id,name,alias,number,position,photo,goals,assists,appearances,minutes,starterAppearances,substituteAppearances,mvpCount,bio,active,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))");
+    for (const player of initialPlayers) await statement.run(player.id, player.name, player.alias, player.number, player.position, player.photo, player.goals, player.assists, player.appearances, player.minutes, player.starterAppearances, player.substituteAppearances, player.mvpCount, player.bio, player.active ? 1 : 0);
+    await statement.finalize();
+    await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('players_seeded_fresh','1')");
+  }
+  const photoRecovery = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='player_photo_recovery_20261026'");
+  if (!photoRecovery) {
+    const uploadsDirectory = path.join(dataDirectory, "uploads");
+    const uploadedPhotos = await fs.readdir(uploadsDirectory).catch(() => [] as string[]);
+    const playersWithoutPhoto = await database.all<{ id: string }[]>("SELECT id FROM players WHERE photo = ''");
+    for (const player of playersWithoutPhoto) {
+      const prefix = `${player.id}-`;
+      const candidates = uploadedPhotos.filter((filename) => filename.startsWith(prefix));
+      if (!candidates.length) continue;
+      const newest = (await Promise.all(candidates.map(async (filename) => ({ filename, modified: (await fs.stat(path.join(uploadsDirectory, filename))).mtimeMs })))).sort((a, b) => b.modified - a.modified)[0];
+      await database.run("UPDATE players SET photo=?, updated_at=datetime('now') WHERE id=?", `/api/uploads/${newest.filename}`, player.id);
+    }
+    await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('player_photo_recovery_20261026','1')");
+  }
   await database.exec(`CREATE TABLE IF NOT EXISTS news (id TEXT PRIMARY KEY, title TEXT NOT NULL, slug TEXT NOT NULL UNIQUE, excerpt TEXT NOT NULL DEFAULT '', content TEXT NOT NULL DEFAULT '', tag TEXT NOT NULL DEFAULT 'CLUB', date TEXT NOT NULL, image TEXT NOT NULL DEFAULT '', accent TEXT NOT NULL DEFAULT 'gold', published INTEGER NOT NULL DEFAULT 1, updated_at TEXT NOT NULL)`);
-  if (!playerCountBeforeSeed?.count) await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('players_seeded_fresh','1')");
   await database.exec(`CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE, passwordHash TEXT NOT NULL, name TEXT NOT NULL, playerId TEXT NOT NULL DEFAULT '', role TEXT NOT NULL DEFAULT 'USER', status TEXT NOT NULL DEFAULT 'PENDING', created_at TEXT NOT NULL, updated_at TEXT NOT NULL, approved_at TEXT)`);
   const demoNewsCleanup = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='news_seed_cleanup_20260723'");
   if (!demoNewsCleanup) {
@@ -112,38 +128,42 @@ async function initializeDatabase() {
     "aldapan-atletico-jabalies-2026-09-20", "2026/27", "Atlético Jabalíes", "JAB", "2026-09-20T21:00:00", "Amistoso", "Campo Municipal - Gora", "finished", 1, 90, 4, 0, "[]", "[]",
     JSON.stringify([{ minute: 0, type: "goal", player: "ortiz", detail: "Aldapan Gora" }, { minute: 0, type: "goal", player: "ortiz", detail: "Aldapan Gora" }, { minute: 0, type: "goal", player: "ortiz", detail: "Aldapan Gora" }, { minute: 0, type: "goal", player: "corisco", detail: "Aldapan Gora" }, { minute: 90, type: "mvp", player: "ortiz" }]),
   );
-  const firstLeagueResults = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='league_results_2026_27_j1_j2_20261026'");
+  const firstLeagueResults = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='league_results_2026_27_j1_j2_20261026_v2'");
   if (!firstLeagueResults) {
+    const roster = await database.all<{ id: string; name: string; alias: string }[]>("SELECT id,name,alias FROM players");
+    const playerId = (name: string) => roster.find((player) => player.name.toLocaleLowerCase("es-ES") === name.toLocaleLowerCase("es-ES") || player.alias.toLocaleLowerCase("es-ES") === name.toLocaleLowerCase("es-ES"))?.id || name.toLowerCase();
     const tatoEvents = JSON.stringify([
-      { minute: 0, type: "goal", player: "juanjo", relatedPlayer: "caspilla", detail: "Aldapan Gora" },
+      { minute: 0, type: "goal", player: playerId("Juanjo"), relatedPlayer: playerId("Jare"), detail: "Aldapan Gora" },
       { minute: 0, type: "goal", player: "Gol en propia puerta", detail: "TATO F.C." },
-      { minute: 0, type: "goal", player: "izan", detail: "Aldapan Gora" },
-      { minute: 5, type: "substitution", player: "juanma", relatedPlayer: "dan" },
-      { minute: 45, type: "substitution", player: "moreno", relatedPlayer: "caspilla" },
-      { minute: 45, type: "substitution", player: "juan-baroffi", relatedPlayer: "izan" },
-      { minute: 55, type: "substitution", player: "padri", relatedPlayer: "juanjo" },
-      { minute: 65, type: "substitution", player: "urko", relatedPlayer: "rey" },
-      { minute: 90, type: "mvp", player: "izan" },
+      { minute: 0, type: "goal", player: playerId("Izan"), detail: "Aldapan Gora" },
+      { minute: 5, type: "substitution", player: playerId("Juanma"), relatedPlayer: playerId("Dan"), detail: "Lesión de Dan" },
+      { minute: 45, type: "substitution", player: playerId("Moreno"), relatedPlayer: playerId("Jare") },
+      { minute: 45, type: "substitution", player: playerId("Baroffi"), relatedPlayer: playerId("Izan") },
+      { minute: 55, type: "substitution", player: playerId("Padri"), relatedPlayer: playerId("Juanjo") },
+      { minute: 65, type: "substitution", player: playerId("Urko"), relatedPlayer: playerId("Rey") },
+      { minute: 90, type: "mvp", player: playerId("Izan") },
     ]);
     const aulaEvents = JSON.stringify([
-      { minute: 0, type: "goal", player: "moreno", relatedPlayer: "juan-baroffi", detail: "Aldapan Gora" },
-      { minute: 0, type: "goal", player: "ortiz", detail: "Aldapan Gora" },
-      { minute: 45, type: "substitution", player: "izan", relatedPlayer: "mauro-m" },
-      { minute: 45, type: "substitution", player: "rey", relatedPlayer: "ortiz" },
-      { minute: 45, type: "substitution", player: "padri", relatedPlayer: "juan-baroffi" },
-      { minute: 60, type: "substitution", player: "ivan", relatedPlayer: "moreno" },
-      { minute: 70, type: "substitution", player: "pedro", relatedPlayer: "juanjo" },
-      { minute: 70, type: "substitution", player: "urko", relatedPlayer: "molinpower" },
-      { minute: 80, type: "substitution", player: "mario", relatedPlayer: "corisco" },
-      { minute: 90, type: "mvp", player: "juanma" },
+      { minute: 0, type: "goal", player: playerId("Moreno"), relatedPlayer: playerId("Baroffi"), detail: "Aldapan Gora" },
+      { minute: 0, type: "goal", player: playerId("Ortiz"), detail: "Aldapan Gora" },
+      { minute: 45, type: "substitution", player: playerId("Izan"), relatedPlayer: playerId("Mauro") },
+      { minute: 45, type: "substitution", player: playerId("Rey"), relatedPlayer: playerId("Ortiz") },
+      { minute: 45, type: "substitution", player: playerId("Padri"), relatedPlayer: playerId("Baroffi") },
+      { minute: 60, type: "substitution", player: playerId("Ivan"), relatedPlayer: playerId("Moreno") },
+      { minute: 70, type: "substitution", player: playerId("Pedro"), relatedPlayer: playerId("Juanjo") },
+      { minute: 70, type: "substitution", player: playerId("Urko"), relatedPlayer: playerId("Molina") },
+      { minute: 80, type: "substitution", player: playerId("Mario"), relatedPlayer: playerId("Sergio") },
+      { minute: 90, type: "mvp", player: playerId("Juanma") },
     ]);
-    await database.run("UPDATE matches SET status='finished', homeScore=3, awayScore=3, starters=?, substitutes=?, events=?, updated_at=datetime('now') WHERE id=?", JSON.stringify(["javi", "dan", "mauro-m", "dani", "molinpower", "corisco", "juanjo", "ortiz", "caspilla", "izan", "rey"]), JSON.stringify(["juanma", "moreno", "juan-baroffi", "padri", "urko"]), tatoEvents, "liga-2026-27-tato");
-    await database.run("UPDATE matches SET status='finished', homeScore=2, awayScore=2, starters=?, substitutes=?, events=?, updated_at=datetime('now') WHERE id=?", JSON.stringify(["javi", "krepox", "juanma", "mauro-m", "dani", "molinpower", "corisco", "juan-baroffi", "ortiz", "moreno", "juanjo"]), JSON.stringify(["izan", "rey", "padri", "ivan", "pedro", "urko", "mario"]), aulaEvents, "liga-2026-27-aula");
-    const izanPhoto = (await database.get<{ photo: string }>("SELECT photo FROM players WHERE id='izan'"))?.photo || "";
-    const juanmaPhoto = (await database.get<{ photo: string }>("SELECT photo FROM players WHERE id='juanma'"))?.photo || "";
+    await database.run("UPDATE matches SET status='finished', homeScore=3, awayScore=3, starters=?, substitutes=?, events=?, updated_at=datetime('now') WHERE id=?", JSON.stringify(["Javi", "Dan", "Mauro", "Dani", "Molina", "Sergio", "Juanjo", "Ortiz", "Jare", "Izan", "Rey"].map(playerId)), JSON.stringify(["Juanma", "Moreno", "Baroffi", "Padri", "Urko"].map(playerId)), tatoEvents, "liga-2026-27-tato");
+    await database.run("UPDATE matches SET status='finished', homeScore=2, awayScore=2, starters=?, substitutes=?, events=?, updated_at=datetime('now') WHERE id=?", JSON.stringify(["Javi", "Martin", "Juanma", "Mauro", "Dani", "Molina", "Sergio", "Baroffi", "Ortiz", "Moreno", "Juanjo"].map(playerId)), JSON.stringify(["Izan", "Rey", "Padri", "Ivan", "Pedro", "Urko", "Mario"].map(playerId)), aulaEvents, "liga-2026-27-aula");
+    const izanPhoto = (await database.get<{ photo: string }>("SELECT photo FROM players WHERE id=?", playerId("Izan")))?.photo || "";
+    const juanmaPhoto = (await database.get<{ photo: string }>("SELECT photo FROM players WHERE id=?", playerId("Juanma")))?.photo || "";
     await database.run("INSERT OR IGNORE INTO news (id,title,slug,excerpt,content,tag,date,image,accent,published,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,datetime('now'))", "liga-tato-empate-2026", "Izan rescata un punto en el estreno liguero", "izan-rescata-un-punto-en-el-estreno-liguero", "El Aldapan Gora firma un 3–3 ante TATO F.C. en una jornada de reacción y carácter.", "El Aldapan Gora abrió la liga con un empate a tres ante TATO F.C. Juanjo inauguró el marcador tras una asistencia de Jare, el segundo llegó en propia puerta y Izan puso el tercero. El equipo tuvo que rehacerse pronto a la lesión de Dan, sustituido por Juanma en el minuto 5, y siguió compitiendo hasta el final. Izan, autor del último tanto, fue elegido MVP del encuentro.", "PARTIDOS", "2026-10-18", izanPhoto, "gold", 1);
     await database.run("INSERT OR IGNORE INTO news (id,title,slug,excerpt,content,tag,date,image,accent,published,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,datetime('now'))", "liga-aula-empate-2026", "Juanma lidera otro empate de mucho oficio", "juanma-lidera-otro-empate-de-mucho-oficio", "El Aldapan Gora empata 2–2 frente a AULA C.F. y suma su segundo punto de la temporada.", "El Aldapan Gora volvió a competir hasta el final para sacar un 2–2 ante AULA C.F. Moreno abrió el marcador tras una asistencia de Baroffi y Ortiz anotó el segundo. El equipo repartió esfuerzos con siete cambios durante el encuentro, con la entrada de Izan, Rey y Padri tras el descanso. Juanma fue elegido MVP por su trabajo y liderazgo en el centro del campo.", "PARTIDOS", "2026-10-25", juanmaPhoto, "dark", 1);
-    await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('league_results_2026_27_j1_j2_20261026','1')");
+    if (izanPhoto) await database.run("UPDATE news SET image=?, updated_at=datetime('now') WHERE id=? AND image=''", izanPhoto, "liga-tato-empate-2026");
+    if (juanmaPhoto) await database.run("UPDATE news SET image=?, updated_at=datetime('now') WHERE id=? AND image=''", juanmaPhoto, "liga-aula-empate-2026");
+    await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('league_results_2026_27_j1_j2_20261026_v2','1')");
   }
   return database;
 }

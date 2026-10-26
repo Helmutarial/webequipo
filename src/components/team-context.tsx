@@ -1,12 +1,12 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { initialPlayers, Player } from "@/lib/team";
+import { Player } from "@/lib/team";
 
-const TeamContext = createContext<{ players: Player[]; refreshPlayers: () => Promise<void>; updatePlayer: (player: Player) => Promise<void>; createPlayer: (player: Player) => Promise<Player | null>; deletePlayer: (id: string) => Promise<void> }>({ players: initialPlayers, refreshPlayers: async () => undefined, updatePlayer: async () => undefined, createPlayer: async () => null, deletePlayer: async () => undefined });
+const TeamContext = createContext<{ players: Player[]; refreshPlayers: () => Promise<void>; updatePlayer: (player: Player) => Promise<void>; createPlayer: (player: Player) => Promise<Player | null>; deletePlayer: (id: string) => Promise<void> }>({ players: [], refreshPlayers: async () => undefined, updatePlayer: async () => undefined, createPlayer: async () => null, deletePlayer: async () => undefined });
 
 export function TeamProvider({ children }: { children: React.ReactNode }) {
-  const [players, setPlayers] = useState<Player[]>(initialPlayers);
+  const [players, setPlayers] = useState<Player[]>([]);
   const refreshPlayers = async () => { const response = await fetch("/api/players", { cache: "no-store" }); if (response.ok) setPlayers(await response.json()); };
   useEffect(() => { void refreshPlayers(); }, []);
   const updatePlayer = async (player: Player) => { setPlayers((current) => current.map((item) => item.id === player.id ? player : item)); await fetch("/api/players", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(player) }); await refreshPlayers(); };
