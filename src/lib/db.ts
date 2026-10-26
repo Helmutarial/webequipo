@@ -49,6 +49,41 @@ async function initializeDatabase() {
     }
     await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('player_photo_recovery_20261026','1')");
   }
+  await database.exec(`CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE, passwordHash TEXT NOT NULL, name TEXT NOT NULL, playerId TEXT NOT NULL DEFAULT '', role TEXT NOT NULL DEFAULT 'USER', status TEXT NOT NULL DEFAULT 'PENDING', created_at TEXT NOT NULL, updated_at TEXT NOT NULL, approved_at TEXT)`);
+  await database.exec(`CREATE TABLE IF NOT EXISTS matches (id TEXT PRIMARY KEY, season TEXT NOT NULL DEFAULT '2026/27', opponent TEXT NOT NULL, opponentShort TEXT NOT NULL, date TEXT NOT NULL, competition TEXT NOT NULL, venue TEXT NOT NULL, status TEXT NOT NULL, isHome INTEGER NOT NULL DEFAULT 1, duration INTEGER NOT NULL DEFAULT 90, homeScore INTEGER, awayScore INTEGER, starters TEXT NOT NULL, substitutes TEXT NOT NULL, events TEXT NOT NULL, updated_at TEXT NOT NULL)`);
+  const duplicateCleanup = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='player_duplicate_cleanup_20261026'");
+  if (!duplicateCleanup) {
+    const players = await database.all<{ id: string; name: string; alias: string; photo: string; active: number; updated_at: string }[]>("SELECT id,name,alias,photo,active,updated_at FROM players");
+    const normalizePlayerName = (value: string) => value.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es-ES");
+    const copies = new Map<string, typeof players>();
+    for (const player of players) {
+      const key = normalizePlayerName(player.name);
+      copies.set(key, [...(copies.get(key) || []), player]);
+    }
+    const replacements = new Map<string, string>();
+    for (const group of copies.values()) {
+      if (group.length < 2) continue;
+      const [keep, ...duplicates] = [...group].sort((a, b) => Number(Boolean(b.photo)) - Number(Boolean(a.photo)) || b.active - a.active || b.updated_at.localeCompare(a.updated_at));
+      for (const duplicate of duplicates) replacements.set(duplicate.id, keep.id);
+    }
+    const legacyNames = new Set(["eskuh", "figa", "gerardo", "carlos"]);
+    for (const player of players) if (legacyNames.has(normalizePlayerName(player.name)) && !player.photo) replacements.set(player.id, "");
+    if (replacements.size) {
+      const matches = await database.all<{ id: string; starters: string; substitutes: string; events: string }[]>("SELECT id,starters,substitutes,events FROM matches");
+      for (const match of matches) {
+        const replacePlayer = (id: string) => replacements.has(id) ? replacements.get(id) || "" : id;
+        const starters = JSON.parse(match.starters).map(replacePlayer).filter(Boolean);
+        const substitutes = JSON.parse(match.substitutes).map(replacePlayer).filter(Boolean);
+        const events = JSON.parse(match.events).map((event: { player: string; relatedPlayer?: string }) => ({ ...event, player: replacePlayer(event.player), relatedPlayer: event.relatedPlayer ? replacePlayer(event.relatedPlayer) || undefined : undefined })).filter((event: { player: string }) => Boolean(event.player));
+        await database.run("UPDATE matches SET starters=?, substitutes=?, events=?, updated_at=datetime('now') WHERE id=?", JSON.stringify([...new Set(starters)]), JSON.stringify([...new Set(substitutes)]), JSON.stringify(events), match.id);
+      }
+      for (const [oldId, newId] of replacements) {
+        if (newId) await database.run("UPDATE users SET playerId=? WHERE playerId=?", newId, oldId);
+        await database.run("DELETE FROM players WHERE id=?", oldId);
+      }
+    }
+    await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('player_duplicate_cleanup_20261026','1')");
+  }
   await database.exec(`CREATE TABLE IF NOT EXISTS news (id TEXT PRIMARY KEY, title TEXT NOT NULL, slug TEXT NOT NULL UNIQUE, excerpt TEXT NOT NULL DEFAULT '', content TEXT NOT NULL DEFAULT '', tag TEXT NOT NULL DEFAULT 'CLUB', date TEXT NOT NULL, image TEXT NOT NULL DEFAULT '', accent TEXT NOT NULL DEFAULT 'gold', published INTEGER NOT NULL DEFAULT 1, updated_at TEXT NOT NULL)`);
   await database.exec(`CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE, passwordHash TEXT NOT NULL, name TEXT NOT NULL, playerId TEXT NOT NULL DEFAULT '', role TEXT NOT NULL DEFAULT 'USER', status TEXT NOT NULL DEFAULT 'PENDING', created_at TEXT NOT NULL, updated_at TEXT NOT NULL, approved_at TEXT)`);
   const demoNewsCleanup = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='news_seed_cleanup_20260723'");

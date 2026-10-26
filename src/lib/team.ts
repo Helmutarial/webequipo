@@ -45,7 +45,7 @@ initialPlayers.push(
   ...["Juanjo", "Padri", "Gerardo", "Carlos"].map((name) => ({ id: name.toLowerCase(), name, alias: name, number: 0, position: "Jugador", photo: "", goals: 0, assists: 0, appearances: 0, minutes: 0, starterAppearances: 0, substituteAppearances: 0, mvpCount: 0, bio: "Jugador del Aldapan Gora.", active: true })),
 );
 
-const removedPlayerIds = new Set(["zuha", "beltran-jr", "joaquinho", "tono", "d-plaza", "juanorro", "luaces", "saul"]);
+const removedPlayerIds = new Set(["zuha", "beltran-jr", "joaquinho", "tono", "d-plaza", "juanorro", "luaces", "saul", "eskuh", "fj-garcia", "gerardo", "carlos"]);
 for (let index = initialPlayers.length - 1; index >= 0; index--) if (removedPlayerIds.has(initialPlayers[index].id)) initialPlayers.splice(index, 1);
 
 const positionUpdates: Record<string, { name?: string; alias?: string; position: string }> = {
