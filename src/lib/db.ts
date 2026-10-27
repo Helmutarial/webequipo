@@ -262,7 +262,7 @@ async function initializeDatabase() {
     const tatoEvents = JSON.stringify([
       { minute: 0, type: "goal", player: playerId("Juanjo"), relatedPlayer: playerId("Jare"), detail: "Aldapan Gora" },
       { minute: 0, type: "goal", player: "Gol en propia puerta", detail: "TATO F.C." },
-      { minute: 0, type: "goal", player: playerId("Izan"), detail: "Aldapan Gora" },
+      { minute: 0, type: "goal", player: playerId("Izan"), relatedPlayer: playerId("Juanjo"), detail: "Aldapan Gora" },
       { minute: 5, type: "substitution", player: playerId("Juanma"), relatedPlayer: playerId("Dan"), detail: "Lesión de Dan" },
       { minute: 45, type: "substitution", player: playerId("Moreno"), relatedPlayer: playerId("Jare") },
       { minute: 45, type: "substitution", player: playerId("Baroffi"), relatedPlayer: playerId("Izan") },
@@ -311,6 +311,23 @@ async function initializeDatabase() {
     if (juanjo?.photo) await database.run("UPDATE news SET image=?, updated_at=datetime('now') WHERE id='amistoso-alacran-octubre-2026'", juanjo.photo);
     if (juanma?.photo) await database.run("UPDATE news SET image=?, updated_at=datetime('now') WHERE id='liga-aula-empate-2026'", juanma.photo);
     await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('league_presentation_repair_20261026_v3','1')");
+  }
+  const tatoAssistRepair = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='tato_izan_assist_20261027_v1'");
+  if (!tatoAssistRepair) {
+    const roster = await database.all<{ id: string; name: string; alias: string }[]>("SELECT id,name,alias FROM players");
+    const normalizePlayer = (value: string) => value.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es-ES");
+    const byName = (name: string) => roster.find((player) => [player.name, player.alias].some((value) => normalizePlayer(value) === normalizePlayer(name)))?.id;
+    const tato = await database.get<{ events: string }>("SELECT events FROM matches WHERE id='liga-2026-27-tato'");
+    const izanId = byName("Izan"); const juanjoId = byName("Juanjo");
+    if (tato && izanId && juanjoId) {
+      const events = JSON.parse(tato.events);
+      const izanGoal = events.find((event: { type: string; player: string }) => event.type === "goal" && event.player === izanId);
+      if (izanGoal) {
+        izanGoal.relatedPlayer = juanjoId;
+        await database.run("UPDATE matches SET events=?, updated_at=datetime('now') WHERE id='liga-2026-27-tato'", JSON.stringify(events));
+      }
+    }
+    await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('tato_izan_assist_20261027_v1','1')");
   }
   const manualOfficialResults = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='official_results_manual_2026_27_j1_j2_v1'");
   if (!manualOfficialResults) {

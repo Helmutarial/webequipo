@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { Footprints, Goal } from "lucide-react";
 import { useMatches } from "@/components/matches-context";
 import { useTeam } from "@/components/team-context";
 const roleByIndex = (index: number) => index === 0 ? "POR" : index < 5 ? "DEF" : index < 8 ? "MED" : "ATA";
 const formatDate = (date: string) => new Date(date).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 const normalize = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/gi, "").toLowerCase();
-const GoalIcon = () => <svg className="match-event-icon goal" viewBox="0 0 24 24" aria-label="Gol" role="img"><circle cx="12" cy="12" r="9" /><path d="m12 6 3 2.2-1.1 3.5h-3.8L9 8.2 12 6Zm-5.7 4.2 2.7-1.5m6-1.5 2.7 1.5m-11.1 6.1 3.6-3.1m2.6 0 3.6 3.1m-9.5 2.7 2.2-2.7m4.6 0 2.2 2.7" /></svg>;
-const AssistIcon = () => <svg className="match-event-icon assist" viewBox="0 0 24 24" aria-label="Asistencia" role="img"><path d="M3.5 17.5h7.1l2.1-2.3 2.2.7 2.2-1.3-2.2-3.5-2.6.8-2.1-3.7-2.7.6 1.3 4-2.9 1.8-1.7-1.1-1.7 1.6Z" /><circle cx="18.2" cy="7.2" r="2.1" /><path d="M14.8 7.2h-3.2m1.7-1.7-1.7 1.7 1.7 1.7" /></svg>;
+const GoalIcon = () => <Goal className="match-event-icon" aria-label="Gol" role="img" />;
+const AssistIcon = () => <Footprints className="match-event-icon assist" aria-label="Asistencia" role="img" />;
 
 export default function MatchPage() {
   const { id } = useParams<{ id: string }>();
@@ -104,7 +105,10 @@ export default function MatchPage() {
 
     <section className="match-detail-card match-summary-card">
       <div className="detail-card-heading"><h2>Resumen del partido</h2><span>{goals.length} goles</span></div>
-      <div className="scorer-summary">{goals.map((goal, index) => <div key={`${goal.player}-${index}`}><strong><GoalIcon />{playerName(goal.player)}</strong><span>Gol</span>{goal.relatedPlayer ? <small><AssistIcon />Asistencia: {playerName(goal.relatedPlayer)}</small> : null}</div>)}</div>
+      <div className="scorer-summary">{goals.map((goal, index) => {
+        const ownGoal = normalize(goal.player).includes("golenpropiapuerta");
+        return <div key={`${goal.player}-${index}`}><strong className={ownGoal ? "own-goal-name" : undefined}>{ownGoal ? playerName(goal.player) : <><GoalIcon />{playerName(goal.player)}</>}</strong><span>{ownGoal ? "Autogol" : "Gol"}</span>{goal.relatedPlayer ? <small><AssistIcon />Asistencia: {playerName(goal.relatedPlayer)}</small> : null}</div>;
+      })}</div>
     </section>
     {mvp ? <section className="match-detail-card match-mvp-spotlight">
       <div><span className="section-label">JUGADOR DEL PARTIDO</span><h2>MVP: {playerName(mvp.player)}</h2><p>{mvpPlayer?.alias || "Partido enorme de principio a fin."}</p></div>
