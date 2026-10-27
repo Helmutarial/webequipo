@@ -7,8 +7,8 @@ import { useTeam } from "@/components/team-context";
 const roleByIndex = (index: number) => index === 0 ? "POR" : index < 5 ? "DEF" : index < 8 ? "MED" : "ATA";
 const formatDate = (date: string) => new Date(date).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 const normalize = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/gi, "").toLowerCase();
-const GoalIcon = () => <svg className="match-event-icon" viewBox="0 0 24 24" aria-label="Gol" role="img"><circle cx="12" cy="12" r="9" /><path d="m12 7 3 2.2-1.1 3.3h-3.8L9 9.2 12 7Zm-5.7 3.5 2.7-1.3m6-1.3 2.7 1.3m-10.7 7.5 3.1-4.2m3.8 0 3.1 4.2m-8.1.7 2.2 1.8m4.8-1.8-2.2 1.8" /></svg>;
-const AssistIcon = () => <svg className="match-event-icon assist" viewBox="0 0 24 24" aria-label="Asistencia" role="img"><path d="M4 17.5h13.5c1.7 0 2.5-1.8 1.3-3l-3.5-2-3.4-5.3-2.6.6 1.2 4.4-2.8 1.7-1.8-1.1-1.9 1.6Z" /><path d="M15 6.5h4m-2-2 2 2-2 2" /></svg>;
+const GoalIcon = () => <svg className="match-event-icon goal" viewBox="0 0 24 24" aria-label="Gol" role="img"><circle cx="12" cy="12" r="9" /><path d="m12 6 3 2.2-1.1 3.5h-3.8L9 8.2 12 6Zm-5.7 4.2 2.7-1.5m6-1.5 2.7 1.5m-11.1 6.1 3.6-3.1m2.6 0 3.6 3.1m-9.5 2.7 2.2-2.7m4.6 0 2.2 2.7" /></svg>;
+const AssistIcon = () => <svg className="match-event-icon assist" viewBox="0 0 24 24" aria-label="Asistencia" role="img"><path d="M3.5 17.5h7.1l2.1-2.3 2.2.7 2.2-1.3-2.2-3.5-2.6.8-2.1-3.7-2.7.6 1.3 4-2.9 1.8-1.7-1.1-1.7 1.6Z" /><circle cx="18.2" cy="7.2" r="2.1" /><path d="M14.8 7.2h-3.2m1.7-1.7-1.7 1.7 1.7 1.7" /></svg>;
 
 export default function MatchPage() {
   const { id } = useParams<{ id: string }>();
@@ -27,6 +27,7 @@ export default function MatchPage() {
   const mvpPlayer = mvp ? playerFor(mvp.player) : undefined;
   const substitutionIn = new Map(substitutions.map((event) => [playerFor(event.player)?.id || event.player, event.minute]));
   const substitutionOut = new Map(substitutions.map((event) => [playerFor(event.relatedPlayer)?.id || event.relatedPlayer, event.minute]));
+  const substitutionByIncomingPlayer = new Map(substitutions.map((event) => [playerFor(event.player)?.id || event.player, event]));
   const hasLineup = match.starters.length || match.substitutes.length;
   const aldapanFirst = match.isHome !== false;
   const eventMarks = new Map<string, { goals: number; assists: number }>();
@@ -66,9 +67,11 @@ export default function MatchPage() {
         </div>
         <aside className="league-bench-panel">
           <div className="detail-card-heading"><h2>Cambios</h2><span>{substitutions.length}</span></div>
-          <div className="league-changes">{substitutions.map((event, index) => <div key={`${event.player}-${index}`}><time>{event.minute}'</time><span>{playerName(event.relatedPlayer || "")}</span><b>→</b><strong>{playerName(event.player)}</strong></div>)}</div>
-          <h3>Suplentes</h3>
-          <div className="league-bench-photos">{match.substitutes.map((playerId) => { const player = playerFor(playerId); const enteredAt = substitutionIn.get(player?.id || playerId); return <div key={playerId}>{player?.photo ? <img src={player.photo} alt={player.name} /> : <span>{playerName(playerId).slice(0, 1)}</span>}<b>{playerName(playerId)}</b>{enteredAt ? <small>{enteredAt}'</small> : null}</div>; })}</div>
+          <p className="bench-panel-help">Suplentes utilizados</p>
+          <div className="league-bench-photos">{match.substitutes.map((playerId) => {
+            const player = playerFor(playerId); const incomingKey = player?.id || playerId; const substitution = substitutionByIncomingPlayer.get(incomingKey);
+            return <div className="league-bench-player" key={playerId}>{player?.photo ? <img src={player.photo} alt={player.name} /> : <span>{playerName(playerId).slice(0, 1)}</span>}<div><b>{playerName(playerId)}</b>{substitution ? <small><time>{substitution.minute}'</time><i>entra por</i><strong>{playerName(substitution.relatedPlayer || "")}</strong></small> : <small className="unused-substitute">Sin minutos</small>}</div></div>;
+          })}</div>
         </aside>
       </div>
     </section> : hasLineup ? <section className="match-detail-card lineup-overview-card">

@@ -312,5 +312,27 @@ async function initializeDatabase() {
     if (juanma?.photo) await database.run("UPDATE news SET image=?, updated_at=datetime('now') WHERE id='liga-aula-empate-2026'", juanma.photo);
     await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('league_presentation_repair_20261026_v3','1')");
   }
+  const manualOfficialResults = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='official_results_manual_2026_27_j1_j2_v1'");
+  if (!manualOfficialResults) {
+    // Resultados validados por el club. No provienen de la descarga externa.
+    const results = [
+      [1, "A.C.D.M C.A.M.", "ESTRELLA COJA F.C", 1, 2],
+      [1, "Asociación Alacrán 1997", "AULA C.F.", 1, 3],
+      [1, "E F TEJAR", "ATLETICO JABALIS", 5, 4],
+      [1, "Avila FC", "MAKAKOS FC", 2, 2],
+      [1, "ESCUELA DE HORTALEZA", "Dragones de Lavapiés B", 11, 0],
+      [2, "BOSTON TURRADORES", "A.C.D.M C.A.M.", 1, 0],
+      [2, "MAKAKOS FC", "ESCUELA DE HORTALEZA", 1, 2],
+      [2, "TATO F.C.", "Avila FC", 3, 1],
+      [2, "AULA C.F.", "ALDAPAN GORA FC", 2, 2],
+      [2, "ATLETICO JABALIS", "Asociación Alacrán 1997", 4, 2],
+      [2, "ESTRELLA COJA F.C", "E F TEJAR", 6, 1],
+    ] as const;
+    for (const [jornada, homeTeam, awayTeam, homeScore, awayScore] of results) {
+      await database.run("UPDATE official_matches SET homeScore=?, awayScore=?, status='F' WHERE season='2026/27' AND jornada=? AND homeTeam=? AND awayTeam=?", homeScore, awayScore, jornada, homeTeam, awayTeam);
+    }
+    await database.run("INSERT OR REPLACE INTO official_sync (season,synced_at,source_url) VALUES ('2026/27',datetime('now'),'Resultados registrados manualmente por el club')");
+    await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('official_results_manual_2026_27_j1_j2_v1','1')");
+  }
   return database;
 }
