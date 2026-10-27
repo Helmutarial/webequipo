@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Footprints, Goal } from "lucide-react";
+import { GiSoccerBall, GiSoccerKick } from "react-icons/gi";
 import { useMatches } from "@/components/matches-context";
 import { useTeam } from "@/components/team-context";
 const roleByIndex = (index: number) => index === 0 ? "POR" : index < 5 ? "DEF" : index < 8 ? "MED" : "ATA";
 const formatDate = (date: string) => new Date(date).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 const normalize = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/gi, "").toLowerCase();
-const GoalIcon = () => <Goal className="match-event-icon" aria-label="Gol" role="img" />;
-const AssistIcon = () => <Footprints className="match-event-icon assist" aria-label="Asistencia" role="img" />;
+const GoalIcon = () => <GiSoccerBall className="match-event-icon" aria-label="Gol" role="img" />;
+const AssistIcon = () => <GiSoccerKick className="match-event-icon assist" aria-label="Asistencia" role="img" />;
 
 export default function MatchPage() {
   const { id } = useParams<{ id: string }>();
@@ -62,7 +62,7 @@ export default function MatchPage() {
             <i className="league-halfway" /><i className="league-circle" /><i className="league-box top" /><i className="league-box bottom" />
             <div className="league-formation">{formation.map((row, rowIndex) => <div className={`league-line league-line-${rowIndex}`} key={rowIndex}>{row.map((playerId) => {
               const player = playerFor(playerId); const marks = eventMarks.get(player?.id || playerId);
-              return <div className="league-player" key={playerId}>{player?.photo ? <img src={player.photo} alt={player.name} /> : <span className="league-player-placeholder">{playerName(playerId).slice(0, 1)}</span>}<b>{playerName(playerId)}</b>{player?.number ? <i>#{player.number}</i> : null}{marks?.goals ? <em className="league-event goal"><GoalIcon />{marks.goals > 1 ? marks.goals : null}</em> : null}{marks?.assists ? <em className="league-event assist"><AssistIcon />{marks.assists > 1 ? marks.assists : null}</em> : null}{substitutionOut.has(player?.id || playerId) ? <small>CAM {substitutionOut.get(player?.id || playerId)}'</small> : null}</div>;
+              return <div className="league-player" key={playerId}>{player?.photo ? <img src={player.photo} alt={player.name} /> : <span className="league-player-placeholder">{playerName(playerId).slice(0, 1)}</span>}<b>{playerName(playerId)}</b>{player?.number ? <i>#{player.number}</i> : null}{marks?.goals || marks?.assists ? <span className="league-event-markers">{marks?.goals ? <em className="league-event goal"><GoalIcon />{marks.goals > 1 ? marks.goals : null}</em> : null}{marks?.assists ? <em className="league-event assist"><AssistIcon />{marks.assists > 1 ? marks.assists : null}</em> : null}</span> : null}{substitutionOut.has(player?.id || playerId) ? <small>CAM {substitutionOut.get(player?.id || playerId)}'</small> : null}</div>;
             })}</div>)}</div>
           </div>
         </div>

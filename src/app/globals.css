@@ -221,6 +221,17 @@ h1,h2,h3,p { margin-top:0; } h1,h2,h3 { font-family:'Space Grotesk',sans-serif; 
 @media (max-width:850px) { .league-bench-photos { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media (max-width:540px) { .league-event { width:18px; height:18px; }.league-event.assist { right:17px; }.league-event .match-event-icon { width:11px; height:11px; flex-basis:11px; }.league-bench-photos { grid-template-columns:1fr; } }
 
+/* Iconos deportivos de Game Icons: balón y golpeo, agrupados si coinciden. */
+.league-event-markers { position:absolute; top:-6px; right:1px; display:flex; align-items:center; gap:3px; z-index:3; }
+.league-event-markers .league-event { position:static; width:24px; height:24px; margin:0; border-radius:50%; }
+.league-event-markers .league-event.assist { right:auto; background:#183127; border-color:#b7c1ab; }
+.league-event-markers .match-event-icon { width:15px; height:15px; flex-basis:15px; fill:currentColor; stroke:none; }
+.league-event-markers .league-event.goal { color:var(--gold-light); }
+.league-event-markers .league-event.assist .match-event-icon { color:#d0e1c5; }
+.match-event-icon { fill:currentColor; stroke:none; color:var(--gold-light); }
+.match-event-icon.assist { fill:currentColor; stroke:none; color:#d0e1c5; }
+@media (max-width:540px) { .league-event-markers { top:-5px; gap:2px; }.league-event-markers .league-event { width:19px; height:19px; }.league-event-markers .match-event-icon { width:12px; height:12px; flex-basis:12px; } }
+
 /* News cards: keep images and text separated */
 .news-card { display:flex; flex-direction:column; min-height:0; overflow:hidden; }
 .news-image { aspect-ratio:16/10; height:auto; overflow:hidden; background:#0b0c0f; }
