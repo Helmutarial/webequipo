@@ -607,6 +607,32 @@ async function initializeDatabase() {
       console.error("No se ha podido completar el análisis de plantilla", error);
     }
   }
+  const teamAssessmentImported = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='team_assessment_import_20261105_v1'");
+  if (!teamAssessmentImported) {
+    const sourceFile = path.join(dataDirectory, "imports", "Aldapan Gora.xlsx");
+    try {
+      await fs.access(sourceFile);
+      const workbook = XLSX.read(await fs.readFile(sourceFile), { type: "buffer", cellText: false, cellDates: false });
+      const worksheet = workbook.Sheets["Análisis de plantilla"];
+      const existing = await database.get<{ payload: string }>("SELECT payload FROM squad_analysis WHERE id='2026-27'");
+      if (worksheet && existing) {
+        const content = (cell: string) => String(worksheet[cell]?.v || "").trim();
+        let payload: Record<string, unknown> = {};
+        try { payload = JSON.parse(existing.payload || "{}"); } catch { payload = {}; }
+        if (!payload.teamAssessment) payload.teamAssessment = {
+          metrics: [
+            ["Calidad de pase y asociación", 4], ["Progresión mediante conducción", 4], ["Capacidad defensiva individual", 4], ["Versatilidad táctica", 4], ["Equilibrio defensivo colectivo potencial", 3], ["Desequilibrio ofensivo individual", 3], ["Juego aéreo", 3], ["Capacidad para sostener presión alta", 2], ["Finalización y amenaza goleadora", 2], ["Ataque de la profundidad", 2],
+          ].map(([label, score]) => ({ label, score })),
+          summary: content("I23"),
+          detail: content("B44"),
+        };
+        await database.run("UPDATE squad_analysis SET payload=?, updated_at=datetime('now') WHERE id='2026-27'", JSON.stringify(payload));
+        await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('team_assessment_import_20261105_v1','1')");
+      }
+    } catch (error) {
+      console.error("No se ha podido importar la valoración de equipo", error);
+    }
+  }
   // Repara fichas que pudieron perder parte de su contenido al consolidar IDs
   // (por ejemplo Dan/Jones). Solo rellena campos vacíos: no pisa ediciones de la Junta.
   const privateProfilesCompleted = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='private_player_profiles_completion_20261104_v1'");
