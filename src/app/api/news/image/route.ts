@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { canCreateNewsRequest } from "@/lib/auth";
 import { imageExtensions, uploadedImageBuffer } from "@/lib/upload-images";
+import { getDataDirectory } from "@/lib/data-directory";
 
 const allowedTypes = imageExtensions;
 
@@ -17,7 +18,7 @@ export async function POST(request: NextRequest) {
   if (!allowedTypes[image.type]) return NextResponse.json({ error: "Formato no soportado" }, { status: 400 });
   if (image.size > maxImageSize) return NextResponse.json({ error: "La imagen es demasiado grande" }, { status: 400 });
 
-  const uploadsDirectory = path.join(process.cwd(), "data", "uploads");
+  const uploadsDirectory = path.join(getDataDirectory(), "uploads");
   await fs.mkdir(uploadsDirectory, { recursive: true });
   const extension = allowedTypes[image.type];
   const filename = `news-${randomUUID()}.${extension}`;

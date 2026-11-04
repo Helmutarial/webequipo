@@ -5,8 +5,9 @@ services:
     restart: unless-stopped
     environment:
       AUTH_SECRET: ${AUTH_SECRET}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       MADRID_SYNC_SECRET: ${MADRID_SYNC_SECRET}
+      # Base de datos y archivos creados desde el panel: persisten en el volumen aldapan_data.
+      TEAM_DATA_DIR: /app/data
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 30s

@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
+import { getDataDirectory } from "@/lib/data-directory";
 
 const contentTypes: Record<string, string> = {
   ".jpg": "image/jpeg",
@@ -21,7 +22,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   if (!contentType) return NextResponse.json({ error: "Archivo no valido" }, { status: 400 });
 
   try {
-    const file = await fs.readFile(path.join(process.cwd(), "data", "uploads", safeFilename));
+    const file = await fs.readFile(path.join(getDataDirectory(), "uploads", safeFilename));
     return new Response(file, {
       headers: {
         "Content-Type": contentType,

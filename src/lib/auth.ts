@@ -1,23 +1,14 @@
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
-import { ADMIN_PROFILE, Role } from "@/lib/team";
+import { getDatabase } from "@/lib/db";
+import { Role } from "@/lib/team";
 
 export type SessionProfile = { name: string; email: string; role: Role; playerId?: string };
 
 const COOKIE_NAME = "aldapan_session";
 const secret = () => process.env.AUTH_SECRET || "local-development-secret-change-me";
 
-export function getNewsEditorProfile(): SessionProfile | null {
-  const email = process.env.NEWS_EDITOR_EMAIL?.trim().toLowerCase();
-  if (!email) return null;
-  return {
-    email,
-    name: process.env.NEWS_EDITOR_NAME?.trim() || "Editor noticias",
-    role: "NEWS_EDITOR",
-  };
-}
-
-export function createSessionToken(profile: SessionProfile = ADMIN_PROFILE) {
+export function createSessionToken(profile: SessionProfile) {
   const payload = JSON.stringify({ email: profile.email, name: profile.name, role: profile.role, playerId: profile.playerId || "", issuedAt: Date.now() });
   const encodedPayload = Buffer.from(payload).toString("base64url");
   const signature = createHmac("sha256", secret()).update(encodedPayload).digest("base64url");
@@ -35,15 +26,9 @@ export function getSessionFromToken(token: string | undefined): SessionProfile |
       const payload = JSON.parse(payloadText);
       const email = String(payload.email || "").toLowerCase();
       const role = String(payload.role || "");
-      if (role === "ADMIN" && email === ADMIN_PROFILE.email) return ADMIN_PROFILE;
-      const editor = getNewsEditorProfile();
-      if (role === "NEWS_EDITOR" && editor && email === editor.email) return editor;
       if ((role === "ADMIN" || role === "NEWS_EDITOR" || role === "USER") && email) return { email, name: String(payload.name || "Usuario"), role: role as Role, playerId: String(payload.playerId || "") };
     }
 
-    const legacyExpected = createHmac("sha256", secret()).update(payloadText).digest("base64url");
-    if (signature.length !== legacyExpected.length || !timingSafeEqual(Buffer.from(signature), Buffer.from(legacyExpected))) return null;
-    if (payloadText.startsWith(`${ADMIN_PROFILE.email}.`)) return ADMIN_PROFILE;
   } catch {
     return null;
   }
@@ -56,12 +41,15 @@ export async function getRequestSession() {
 }
 
 export async function isAdminRequest() {
-  return (await getRequestSession())?.role === "ADMIN";
+  const session = await getRequestSession();
+  if (session?.role !== "ADMIN") return false;
+  const database = await getDatabase();
+  const user = await database.get<{ id: string }>("SELECT id FROM users WHERE email=? AND role='ADMIN' AND status='APPROVED'", session.email);
+  return Boolean(user);
 }
 
 export async function canCreateNewsRequest() {
-  const session = await getRequestSession();
-  return session?.role === "ADMIN" || session?.role === "NEWS_EDITOR";
+  return isAdminRequest();
 }
 
 export function hashPassword(password: string) {

@@ -18,11 +18,15 @@ export type Player = {
   active: boolean;
 };
 
-export const ADMIN_PROFILE = {
-  email: "pedrojiblanco@gmail.com",
-  name: "Pedro",
-  role: "ADMIN" as const,
-};
+export const BOARD_ADMIN_ACCOUNTS = [
+  { name: "Jaime", email: "jaimemr079@gmail.com", playerId: "caspilla" },
+  { name: "Pedro", email: "pedrojiblanco@gmail.com", playerId: "pedro" },
+  { name: "Sergio", email: "sergioo.nuevo00@gmail.com", playerId: "corisco" },
+  { name: "Mario", email: "mariosaenznieva@hotmail.com", playerId: "mario" },
+  { name: "Moreno", email: "gmorenoalcala22@gmail.com", playerId: "moreno" },
+] as const;
+
+export const boardAdminForEmail = (email: string) => BOARD_ADMIN_ACCOUNTS.find((account) => account.email === email.trim().toLowerCase());
 
 export const initialPlayers: Player[] = [
   ["urko", "Urko", "El Muro", 3], ["caspilla", "Caspilla", "Capi", 7], ["eskuh", "Eskuh", "Eskuh", 13], ["zuha", "Zuha", "Zuha", 8], ["corisco", "Corisco", "Cori", 10], ["mauro-m", "Mauro M", "Mauro", 2], ["beltran-jr", "Beltran JR", "Beltran", 9], ["joaquinho", "Joaquinho", "Joa", 6], ["ortiz", "Ortiz", "Ortiz", 15], ["krepox", "Krepox", "Kre", 17], ["rey", "Rey", "Rey", 5], ["tono", "Toño", "Toño", 99], ["d-plaza", "D. Plaza", "Plaza", 21], ["fj-garcia", "F.J. García", "F.J.", 14], ["juanorro", "Juanorro", "Juanorro", 23], ["anglada", "Anglada", "Anglada", 80], ["molinpower", "MolinPower", "Molin", 19], ["moreno", "Moreno", "Moreno", 22], ["luaces", "Luaces", "Luaces", 4], ["ivan", "Ivan", "Ivan", 28], ["saul", "Saúl", "Saúl", 20], ["pedro", "Pedro", "Pedro", 11],

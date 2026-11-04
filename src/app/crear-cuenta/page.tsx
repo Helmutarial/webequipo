@@ -1,13 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useMemo, useState } from "react";
-import { useTeam } from "@/components/team-context";
+import { FormEvent, useState } from "react";
 
 export default function SignupPage() {
-  const { players } = useTeam();
-  const activePlayers = useMemo(() => players.filter((player) => player.active), [players]);
-  const [form, setForm] = useState({ name: "", email: "", password: "", playerId: "" });
+  const [form, setForm] = useState({ email: "", password: "" });
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -22,23 +19,21 @@ export default function SignupPage() {
       setError(data.error || "No se ha podido crear la solicitud.");
       return;
     }
-    setMessage("Solicitud enviada. Pedro tendrá que aprobar tu cuenta antes de que puedas entrar.");
-    setForm({ name: "", email: "", password: "", playerId: "" });
+    setMessage("Cuenta creada. Ya puedes iniciar sesión en el área de junta.");
+    setForm({ email: "", password: "" });
   };
 
   return <main className="auth-page">
     <div className="auth-card signup-card">
-      <span className="section-label">ALTA DEL EQUIPO</span>
+      <span className="section-label">ÁREA DE JUNTA</span>
       <h1>Crear cuenta<span>.</span></h1>
-      <p>Elige qué jugador eres. Tu cuenta quedará pendiente hasta que el admin la autorice.</p>
+      <p>Utiliza el correo autorizado de la junta. El sistema asociará automáticamente tu cuenta con tu jugador y acceso de administrador.</p>
       <form onSubmit={submit}>
-        <label>Nombre<input value={form.name} onChange={(event) => update("name", event.target.value)} placeholder="Tu nombre" /></label>
-        <label>Correo electronico<input type="email" value={form.email} onChange={(event) => update("email", event.target.value)} placeholder="tu@email.com" /></label>
-        <label>Contraseña<input type="password" value={form.password} onChange={(event) => update("password", event.target.value)} placeholder="Minimo 6 caracteres" /></label>
-        <label>Jugador<select value={form.playerId} onChange={(event) => update("playerId", event.target.value)}><option value="">Selecciona jugador</option>{activePlayers.map((player) => <option value={player.id} key={player.id}>{player.name} {player.number ? `#${player.number}` : ""}</option>)}</select></label>
+        <label>Correo electrónico<input type="email" value={form.email} onChange={(event) => update("email", event.target.value)} placeholder="tu@email.com" /></label>
+        <label>Contraseña<input type="password" value={form.password} onChange={(event) => update("password", event.target.value)} placeholder="Mínimo 8 caracteres" /></label>
         {error && <small className="form-error">{error}</small>}
         {message && <small className="form-success">{message}</small>}
-        <button className="primary-button" type="submit">Enviar solicitud ↗</button>
+        <button className="primary-button" type="submit">Crear acceso ↗</button>
       </form>
       <small className="auth-note">¿Ya tienes cuenta? <Link href="/iniciar-sesion">Inicia sesión</Link></small>
     </div>

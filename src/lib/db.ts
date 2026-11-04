@@ -6,6 +6,8 @@ import { initialPlayers } from "@/lib/team";
 import { initialNews } from "@/lib/news";
 import { initialMatches, season2026Matches } from "@/lib/matches";
 import { jdmMatches2025 } from "@/lib/jdm-2025-26";
+import { privatePlayerProfileSeeds } from "@/lib/private-player-profiles";
+import { getDataDirectory } from "@/lib/data-directory";
 
 let databasePromise: Promise<Database> | undefined;
 
@@ -15,7 +17,7 @@ export function getDatabase() {
 }
 
 async function initializeDatabase() {
-  const dataDirectory = path.join(process.cwd(), "data");
+  const dataDirectory = getDataDirectory();
   await fs.mkdir(dataDirectory, { recursive: true });
   const database = await open({ filename: path.join(dataDirectory, "team.db"), driver: sqlite3.Database });
   await database.exec(`CREATE TABLE IF NOT EXISTS app_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)`);
@@ -23,6 +25,8 @@ async function initializeDatabase() {
   await database.exec(`CREATE TABLE IF NOT EXISTS official_matches (season TEXT NOT NULL, jornada INTEGER NOT NULL, homeTeam TEXT NOT NULL, awayTeam TEXT NOT NULL, homeScore INTEGER, awayScore INTEGER, date TEXT NOT NULL, time TEXT NOT NULL, venue TEXT NOT NULL, status TEXT NOT NULL, PRIMARY KEY (season, jornada, homeTeam, awayTeam))`);
   await database.exec(`CREATE TABLE IF NOT EXISTS official_sync (season TEXT PRIMARY KEY, synced_at TEXT NOT NULL, source_url TEXT NOT NULL)`);
   await database.exec(`CREATE TABLE IF NOT EXISTS players (id TEXT PRIMARY KEY, name TEXT NOT NULL, alias TEXT NOT NULL DEFAULT '', number INTEGER NOT NULL, position TEXT NOT NULL DEFAULT 'Jugador', photo TEXT NOT NULL DEFAULT '', goals INTEGER NOT NULL DEFAULT 0, assists INTEGER NOT NULL DEFAULT 0, appearances INTEGER NOT NULL DEFAULT 0, minutes INTEGER NOT NULL DEFAULT 0, starterAppearances INTEGER NOT NULL DEFAULT 0, substituteAppearances INTEGER NOT NULL DEFAULT 0, mvpCount INTEGER NOT NULL DEFAULT 0, bio TEXT NOT NULL DEFAULT '', active INTEGER NOT NULL DEFAULT 1, updated_at TEXT NOT NULL)`);
+  await database.exec(`CREATE TABLE IF NOT EXISTS player_private_profiles (player_id TEXT PRIMARY KEY, age INTEGER, height_cm INTEGER, weight_kg INTEGER, dominant_foot TEXT NOT NULL DEFAULT '', natural_position TEXT NOT NULL DEFAULT '', secondary_positions TEXT NOT NULL DEFAULT '', analysis TEXT NOT NULL DEFAULT '', keys_to_use TEXT NOT NULL DEFAULT '', cautions TEXT NOT NULL DEFAULT '', tactical_fit TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL, FOREIGN KEY(player_id) REFERENCES players(id))`);
+  await database.exec(`CREATE TABLE IF NOT EXISTS player_profile_comments (id TEXT PRIMARY KEY, player_id TEXT NOT NULL, user_email TEXT NOT NULL, author_name TEXT NOT NULL, body TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, FOREIGN KEY(player_id) REFERENCES players(id))`);
   const columns = await database.all<{ name: string }[]>("PRAGMA table_info(players)");
   const existingColumns = new Set(columns.map((column) => column.name));
   for (const [name, definition] of [["minutes", "INTEGER NOT NULL DEFAULT 0"], ["starterAppearances", "INTEGER NOT NULL DEFAULT 0"], ["substituteAppearances", "INTEGER NOT NULL DEFAULT 0"], ["mvpCount", "INTEGER NOT NULL DEFAULT 0"], ["active", "INTEGER NOT NULL DEFAULT 1"]] as const) {
@@ -350,6 +354,22 @@ async function initializeDatabase() {
     }
     await database.run("INSERT OR REPLACE INTO official_sync (season,synced_at,source_url) VALUES ('2026/27',datetime('now'),'Resultados registrados manualmente por el club')");
     await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('official_results_manual_2026_27_j1_j2_v1','1')");
+  }
+  const privateProfilesImported = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='private_player_profiles_import_20261104_v1'");
+  if (!privateProfilesImported) {
+    const statement = await database.prepare("INSERT OR IGNORE INTO player_private_profiles (player_id,age,height_cm,weight_kg,dominant_foot,natural_position,secondary_positions,updated_at) VALUES (?,?,?,?,?,?,?,datetime('now'))");
+    for (const [playerId, profile] of Object.entries(privatePlayerProfileSeeds)) {
+      const player = await database.get<{ id: string }>("SELECT id FROM players WHERE id=?", playerId);
+      if (player) await statement.run(playerId, profile.age, profile.heightCm, profile.weightKg, profile.dominantFoot, profile.naturalPosition, profile.secondaryPositions);
+    }
+    await statement.finalize();
+    await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('private_player_profiles_import_20261104_v1','1')");
+  }
+  const boardAccountsReset = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='board_admin_accounts_reset_20261104_v2'");
+  if (!boardAccountsReset) {
+    // La junta pidió sustituir las cuentas anteriores. Las cinco autorizadas se registran ellas mismas.
+    await database.run("DELETE FROM users");
+    await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('board_admin_accounts_reset_20261104_v2','1')");
   }
   return database;
 }

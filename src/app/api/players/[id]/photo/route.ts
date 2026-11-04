@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDatabase } from "@/lib/db";
 import { isAdminRequest } from "@/lib/auth";
 import { imageExtensions, uploadedImageBuffer } from "@/lib/upload-images";
+import { getDataDirectory } from "@/lib/data-directory";
 
 const allowedTypes = imageExtensions;
 
@@ -14,7 +15,7 @@ async function removeOldUploadedPhoto(photo: string) {
   if (!photo.startsWith("/api/uploads/")) return;
   const filename = photo.split("/").pop();
   if (!filename) return;
-  await fs.rm(path.join(process.cwd(), "data", "uploads", filename), { force: true }).catch(() => undefined);
+  await fs.rm(path.join(getDataDirectory(), "uploads", filename), { force: true }).catch(() => undefined);
 }
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (!allowedTypes[photo.type]) return NextResponse.json({ error: "Formato no soportado" }, { status: 400 });
   if (photo.size > maxPhotoSize) return NextResponse.json({ error: "La foto es demasiado grande" }, { status: 400 });
 
-  const uploadsDirectory = path.join(process.cwd(), "data", "uploads");
+  const uploadsDirectory = path.join(getDataDirectory(), "uploads");
   await fs.mkdir(uploadsDirectory, { recursive: true });
   const extension = allowedTypes[photo.type];
   const filename = `${id}-${randomUUID()}.${extension}`;

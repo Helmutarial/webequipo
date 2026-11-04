@@ -9,10 +9,13 @@ import { useNews } from "@/components/news-context";
 import MatchAdminEditor from "@/components/match-admin-editor";
 import UsersAdminEditor from "@/components/users-admin-editor";
 import { NewsItem } from "@/lib/news";
-import { ADMIN_PROFILE, Player } from "@/lib/team";
+import { Player } from "@/lib/team";
 
 const blankNews = (): NewsItem => ({ id: "", title: "", slug: "", excerpt: "", content: "", tag: "CLUB", date: new Date().toISOString().slice(0, 10), image: "", accent: "gold", published: true });
 const blankPlayer = (): Player => ({ id: "", name: "", alias: "", number: 0, position: "Jugador", photo: "", goals: 0, assists: 0, appearances: 0, minutes: 0, starterAppearances: 0, substituteAppearances: 0, mvpCount: 0, bio: "Jugador del Aldapan Gora.", active: true });
+type PrivateProfile = { playerId: string; age: number | null; heightCm: number | null; weightKg: number | null; dominantFoot: string; naturalPosition: string; secondaryPositions: string; analysis: string; keysToUse: string; cautions: string; tacticalFit: string };
+type ProfileComment = { id: string; authorName: string; body: string; createdAt: string };
+const blankPrivateProfile = (playerId: string): PrivateProfile => ({ playerId, age: null, heightCm: null, weightKg: null, dominantFoot: "", naturalPosition: "", secondaryPositions: "", analysis: "", keysToUse: "", cautions: "", tacticalFit: "" });
 
 export default function AdminPage() {
   const router = useRouter();
@@ -25,9 +28,13 @@ export default function AdminPage() {
   const [saved, setSaved] = useState(false);
   const [photoStatus, setPhotoStatus] = useState("");
   const [newsImageStatus, setNewsImageStatus] = useState("");
+  const [privateProfile, setPrivateProfile] = useState<PrivateProfile | null>(null);
+  const [profileComments, setProfileComments] = useState<ProfileComment[]>([]);
+  const [profileStatus, setProfileStatus] = useState("");
+  const [commentDraft, setCommentDraft] = useState("");
   const editPanelRef = useRef<HTMLElement | null>(null);
 
-  const isAdmin = session?.role === "ADMIN" || session?.email === ADMIN_PROFILE.email;
+  const isAdmin = session?.role === "ADMIN";
   const isNewsEditor = session?.role === "NEWS_EDITOR";
 
   useEffect(() => {
@@ -41,6 +48,22 @@ export default function AdminPage() {
     }
   }, [router, session]);
 
+  useEffect(() => {
+    if (!selected?.id || !isAdmin) {
+      setPrivateProfile(null);
+      setProfileComments([]);
+      return;
+    }
+    setProfileStatus("Cargando ficha interna…");
+    void fetch(`/api/admin/player-profiles/${selected.id}`, { cache: "no-store" }).then(async (response) => {
+      if (!response.ok) throw new Error();
+      const data = await response.json();
+      setPrivateProfile(data.profile || blankPrivateProfile(selected.id));
+      setProfileComments(data.comments || []);
+      setProfileStatus("");
+    }).catch(() => setProfileStatus("No se ha podido cargar la ficha interna."));
+  }, [selected?.id, isAdmin]);
+
   if (!session) return null;
 
   const save = async () => {
@@ -52,7 +75,11 @@ export default function AdminPage() {
       if (selected.id) await updatePlayer(selected);
       else {
         const created = await createPlayer(selected);
-        if (created) setSelected(created);
+        if (created) { setSelected(created); setSaved(true); return; }
+      }
+      if (selected.id && privateProfile) {
+        const response = await fetch(`/api/admin/player-profiles/${selected.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(privateProfile) });
+        setProfileStatus(response.ok ? "Ficha interna guardada." : "No se ha podido guardar la ficha interna.");
       }
       setSaved(true);
     }
@@ -63,6 +90,7 @@ export default function AdminPage() {
   };
 
   const updateSelected = (field: keyof Player, value: string | number | boolean) => setSelected((current) => current ? { ...current, [field]: value } : current);
+  const updatePrivateProfile = (field: keyof PrivateProfile, value: string | number | null) => setPrivateProfile((current) => current ? { ...current, [field]: value } : current);
   const updateSelectedNews = (field: keyof NewsItem, value: string | boolean) => setSelectedNews((current) => current ? { ...current, [field]: value } : current);
   const uploadPlayerPhoto = async (file: File) => {
     if (!selected) return;
@@ -97,6 +125,14 @@ export default function AdminPage() {
     const result = await response.json();
     setSelectedNews({ ...selectedNews, image: result.image });
     setNewsImageStatus("Imagen subida.");
+  };
+  const addProfileComment = async () => {
+    if (!selected?.id || !commentDraft.trim()) return;
+    const response = await fetch(`/api/admin/player-profiles/${selected.id}/comments`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body: commentDraft }) });
+    if (!response.ok) { setProfileStatus("No se ha podido guardar el comentario."); return; }
+    const data = await fetch(`/api/admin/player-profiles/${selected.id}`, { cache: "no-store" }).then((result) => result.json());
+    setProfileComments(data.comments || []);
+    setCommentDraft("");
   };
   const saveNewsItem = async () => {
     if (!selectedNews) return;
@@ -156,6 +192,23 @@ export default function AdminPage() {
           </div>
           <label className="full-field">Descripcion<textarea value={selected.bio} onChange={(e) => updateSelected("bio", e.target.value)} /></label>
         </div>
+        <section className="private-profile-editor">
+          <div className="private-profile-heading"><div><span className="section-label">FICHA INTERNA · SOLO JUNTA</span><h3>Perfil deportivo</h3><p>Estos datos no se muestran en la web pública.</p></div><span>Privado</span></div>
+          {privateProfile ? <div className="edit-grid private-profile-grid">
+            <label>Edad<input type="number" value={privateProfile.age ?? ""} onChange={(e) => updatePrivateProfile("age", e.target.value ? Number(e.target.value) : null)} /></label>
+            <label>Altura (cm)<input type="number" value={privateProfile.heightCm ?? ""} onChange={(e) => updatePrivateProfile("heightCm", e.target.value ? Number(e.target.value) : null)} /></label>
+            <label>Peso (kg)<input type="number" value={privateProfile.weightKg ?? ""} onChange={(e) => updatePrivateProfile("weightKg", e.target.value ? Number(e.target.value) : null)} /></label>
+            <label>Pie dominante<input value={privateProfile.dominantFoot} onChange={(e) => updatePrivateProfile("dominantFoot", e.target.value)} /></label>
+            <label>Posición natural<input value={privateProfile.naturalPosition} onChange={(e) => updatePrivateProfile("naturalPosition", e.target.value)} /></label>
+            <label>Posiciones secundarias<input value={privateProfile.secondaryPositions} onChange={(e) => updatePrivateProfile("secondaryPositions", e.target.value)} /></label>
+            <label className="full-field">Análisis<textarea rows={7} value={privateProfile.analysis} onChange={(e) => updatePrivateProfile("analysis", e.target.value)} placeholder="Resumen de comportamientos y tendencias" /></label>
+            <label className="full-field">Claves de aprovechamiento<textarea rows={6} value={privateProfile.keysToUse} onChange={(e) => updatePrivateProfile("keysToUse", e.target.value)} /></label>
+            <label className="full-field">Precauciones<textarea rows={6} value={privateProfile.cautions} onChange={(e) => updatePrivateProfile("cautions", e.target.value)} /></label>
+            <label className="full-field">Encaje táctico<textarea rows={4} value={privateProfile.tacticalFit} onChange={(e) => updatePrivateProfile("tacticalFit", e.target.value)} /></label>
+          </div> : <p className="muted">{profileStatus || "Selecciona un jugador guardado para cargar su ficha interna."}</p>}
+          {profileStatus && privateProfile && <p className="private-profile-status">{profileStatus}</p>}
+          <div className="private-comments"><h4>Comentarios de la junta</h4>{profileComments.length ? <div className="private-comment-list">{profileComments.map((comment) => <article key={comment.id}><strong>{comment.authorName}</strong><time>{new Date(comment.createdAt.replace(" ", "T") + "Z").toLocaleDateString("es-ES")}</time><p>{comment.body}</p></article>)}</div> : <p className="muted">Todavía no hay comentarios para esta ficha.</p>}<label>Añadir comentario<textarea value={commentDraft} onChange={(e) => setCommentDraft(e.target.value)} placeholder="Tu observación para la junta…" /></label><button className="text-action" type="button" onClick={() => void addProfileComment()}>Guardar comentario</button></div>
+        </section>
         <button className="save-button" onClick={save}>{selected.id ? "Guardar cambios" : "Crear jugador"}</button>
         {selected.id && <button className="delete-button" onClick={async () => { if (!confirm(`¿Eliminar a ${selected.name}? Se quitará también de partidos y alineaciones guardadas.`)) return; await deletePlayer(selected.id); setSelected(null); }}>Eliminar jugador</button>}
         {saved && <span className="saved-notice">Cambios guardados.</span>}
