@@ -636,6 +636,51 @@ async function initializeDatabase() {
       console.error("No se han podido completar las fichas privadas", error);
     }
   }
+  // Los cuatro perfiles creados desde administración conservaron IDs UUID,
+  // mientras que los informes importados del Excel usaban IDs antiguos. Se
+  // unifican todas las referencias, incluidas valoraciones y comentarios.
+  const playerIdentityReconciliation = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='player_identity_reconciliation_20261105_v1'");
+  if (!playerIdentityReconciliation) {
+    const normalizeIdentity = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLocaleLowerCase("es-ES");
+    const playerRows = await database.all<{ id: string; name: string; alias: string }[]>("SELECT id,name,alias FROM players");
+    const identities = [
+      { legacyId: "Jones", names: ["Dan", "Jones"], sheet: "DAN #14" }, { legacyId: "javi", names: ["Javi"], sheet: "JAVI #13" }, { legacyId: "izan", names: ["Izan"], sheet: "IZAN #38" }, { legacyId: "juanma", names: ["Juanma", "Juanma"], sheet: "JUANMA #4" },
+    ];
+    const sourceFile = path.join(dataDirectory, "imports", "Aldapan Gora.xlsx");
+    let workbook: XLSX.WorkBook | undefined;
+    try { workbook = XLSX.read(await fs.readFile(sourceFile), { type: "buffer", cellText: false, cellDates: false }); } catch { /* El traspaso de IDs sigue siendo seguro sin el Excel. */ }
+    for (const identity of identities) {
+      const target = playerRows.find((player) => player.id !== identity.legacyId && [player.name, player.alias].some((value) => identity.names.includes(value) || identity.names.some((name) => normalizeIdentity(value) === normalizeIdentity(name))));
+      if (!target) continue;
+      const legacyProfile = await database.get<{ age: number | null; height_cm: number | null; weight_kg: number | null; dominant_foot: string; natural_position: string; secondary_positions: string; analysis: string; keys_to_use: string; cautions: string; tactical_fit: string }>("SELECT age,height_cm,weight_kg,dominant_foot,natural_position,secondary_positions,analysis,keys_to_use,cautions,tactical_fit FROM player_private_profiles WHERE player_id=?", identity.legacyId);
+      const targetProfile = await database.get<typeof legacyProfile>("SELECT age,height_cm,weight_kg,dominant_foot,natural_position,secondary_positions,analysis,keys_to_use,cautions,tactical_fit FROM player_private_profiles WHERE player_id=?", target.id);
+      const seed = privatePlayerProfileSeeds[identity.legacyId];
+      const sheet = workbook?.Sheets[identity.sheet];
+      const content = (cell: string) => String(sheet?.[cell]?.v || "").trim();
+      await database.run(
+        "INSERT INTO player_private_profiles (player_id,age,height_cm,weight_kg,dominant_foot,natural_position,secondary_positions,analysis,keys_to_use,cautions,tactical_fit,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,datetime('now')) ON CONFLICT(player_id) DO UPDATE SET age=excluded.age,height_cm=excluded.height_cm,weight_kg=excluded.weight_kg,dominant_foot=excluded.dominant_foot,natural_position=excluded.natural_position,secondary_positions=excluded.secondary_positions,analysis=excluded.analysis,keys_to_use=excluded.keys_to_use,cautions=excluded.cautions,tactical_fit=excluded.tactical_fit,updated_at=datetime('now')",
+        target.id, targetProfile?.age ?? legacyProfile?.age ?? seed?.age ?? null, targetProfile?.height_cm ?? legacyProfile?.height_cm ?? seed?.heightCm ?? null, targetProfile?.weight_kg ?? legacyProfile?.weight_kg ?? seed?.weightKg ?? null, targetProfile?.dominant_foot || legacyProfile?.dominant_foot || seed?.dominantFoot || "", targetProfile?.natural_position || legacyProfile?.natural_position || seed?.naturalPosition || "", targetProfile?.secondary_positions || legacyProfile?.secondary_positions || seed?.secondaryPositions || "", targetProfile?.analysis || legacyProfile?.analysis || content("B17"), targetProfile?.keys_to_use || legacyProfile?.keys_to_use || content("B36"), targetProfile?.cautions || legacyProfile?.cautions || content("B55"), targetProfile?.tactical_fit || legacyProfile?.tactical_fit || content("B74"),
+      );
+      if (target.id !== identity.legacyId) {
+        await database.run("DELETE FROM player_private_profiles WHERE player_id=?", identity.legacyId);
+        await database.run("UPDATE player_profile_comments SET player_id=? WHERE player_id=?", target.id, identity.legacyId);
+        await database.run("UPDATE match_player_report_comments SET player_id=? WHERE player_id=?", target.id, identity.legacyId);
+        await database.run("UPDATE users SET playerId=? WHERE playerId=?", target.id, identity.legacyId);
+        const reports = await database.all<{ match_id: string; evaluation: string }[]>("SELECT match_id,evaluation FROM match_player_reports WHERE player_id=?", identity.legacyId);
+        for (const report of reports) await database.run("INSERT OR REPLACE INTO match_player_reports (match_id,player_id,evaluation,updated_at) VALUES (?,?,?,datetime('now'))", report.match_id, target.id, report.evaluation);
+        await database.run("DELETE FROM match_player_reports WHERE player_id=?", identity.legacyId);
+        const matchesToFix = await database.all<{ id: string; starters: string; substitutes: string; events: string }[]>("SELECT id,starters,substitutes,events FROM matches");
+        for (const match of matchesToFix) {
+          const replace = (value: string) => value === identity.legacyId ? target.id : value;
+          const starters = JSON.parse(match.starters).map(replace);
+          const substitutes = JSON.parse(match.substitutes).map(replace);
+          const events = JSON.parse(match.events).map((event: { player: string; relatedPlayer?: string }) => ({ ...event, player: replace(event.player), relatedPlayer: event.relatedPlayer ? replace(event.relatedPlayer) : undefined }));
+          await database.run("UPDATE matches SET starters=?, substitutes=?, events=?, updated_at=datetime('now') WHERE id=?", JSON.stringify(starters), JSON.stringify(substitutes), JSON.stringify(events), match.id);
+        }
+      }
+    }
+    await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('player_identity_reconciliation_20261105_v1','1')");
+  }
   const boardAccountsReset = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='board_admin_accounts_reset_20261104_v2'");
   if (!boardAccountsReset) {
     // La junta pidió sustituir las cuentas anteriores. Las cinco autorizadas se registran ellas mismas.
