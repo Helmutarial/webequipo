@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import sqlite3 from "sqlite3";
 import { open, Database } from "sqlite";
+import * as XLSX from "xlsx";
 import { initialPlayers } from "@/lib/team";
 import { initialNews } from "@/lib/news";
 import { initialMatches, season2026Matches } from "@/lib/matches";
@@ -364,6 +365,31 @@ async function initializeDatabase() {
     }
     await statement.finalize();
     await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('private_player_profiles_import_20261104_v1','1')");
+  }
+  const privateProfileNarrativesImported = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='private_player_profiles_narratives_import_20261104_v1'");
+  if (!privateProfileNarrativesImported) {
+    const sourceFile = path.join(dataDirectory, "imports", "Aldapan Gora.xlsx");
+    const playerBySheet = new Map([
+      ["MAURO #2", "mauro-m"], ["URKO #3", "urko"], ["JUANMA #4", "juanma"], ["REY #5", "rey"], ["JARE #7", "caspilla"], ["PADRINO #8", "padri"], ["ORTIZ #9", "ortiz"], ["SERGIO #10", "corisco"], ["PEDRO #11", "pedro"], ["JAVI #13", "javi"], ["DAN #14", "Jones"], ["DANI #15", "dani"], ["MARTIN #17", "krepox"], ["BAROFFI #18", "juan-baroffi"], ["MOLINA #19", "molinpower"], ["MORENO #22", "moreno"], ["MARIO #25", "mario"], ["IVAN #28", "ivan"], ["IZAN #38", "izan"], ["ANGLADA #79", "anglada"], ["JUANJO #80", "juanjo"],
+    ]);
+    const normalizeSheetName = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+    try {
+      await fs.access(sourceFile);
+      const workbook = XLSX.read(await fs.readFile(sourceFile), { type: "buffer", cellText: false, cellDates: false });
+      for (const sheetName of workbook.SheetNames) {
+        const playerId = playerBySheet.get(normalizeSheetName(sheetName));
+        if (!playerId) continue;
+        const worksheet = workbook.Sheets[sheetName];
+        const content = (cell: string) => String(worksheet[cell]?.v || "").trim();
+        await database.run(
+          "INSERT INTO player_private_profiles (player_id,analysis,keys_to_use,cautions,tactical_fit,updated_at) VALUES (?,?,?,?,?,datetime('now')) ON CONFLICT(player_id) DO UPDATE SET analysis=excluded.analysis,keys_to_use=excluded.keys_to_use,cautions=excluded.cautions,tactical_fit=excluded.tactical_fit,updated_at=datetime('now')",
+          playerId, content("B17"), content("B36"), content("B55"), content("B74"),
+        );
+      }
+      await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('private_player_profiles_narratives_import_20261104_v1','1')");
+    } catch (error) {
+      console.error("No se han podido importar los textos privados de los jugadores", error);
+    }
   }
   const boardAccountsReset = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='board_admin_accounts_reset_20261104_v2'");
   if (!boardAccountsReset) {
