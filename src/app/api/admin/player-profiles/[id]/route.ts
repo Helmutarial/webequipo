@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import fs from "node:fs/promises";
+import path from "node:path";
+import * as XLSX from "xlsx";
 import { isAdminRequest } from "@/lib/auth";
 import { getDatabase } from "@/lib/db";
+import { getDataDirectory } from "@/lib/data-directory";
+import { privatePlayerProfileSeeds } from "@/lib/private-player-profiles";
 import { sanitizeRichText } from "@/lib/rich-text";
 
 const asNumberOrNull = (value: unknown) => {
@@ -8,13 +13,38 @@ const asNumberOrNull = (value: unknown) => {
   return Number.isFinite(number) && number > 0 ? Math.round(number) : null;
 };
 
+type PlayerProfile = { playerId: string; age: number | null; heightCm: number | null; weightKg: number | null; dominantFoot: string; naturalPosition: string; secondaryPositions: string; analysis: string; keysToUse: string; cautions: string; tacticalFit: string; updatedAt?: string };
+
+const playerSheets: Record<string, string> = {
+  "mauro-m": "MAURO #2", urko: "URKO #3", juanma: "JUANMA #4", rey: "REY #5", caspilla: "JARE #7", padri: "PADRINO #8", ortiz: "ORTIZ #9", corisco: "SERGIO #10", pedro: "PEDRO #11", javi: "JAVI #13", Jones: "DAN #14", dani: "DANI #15", krepox: "MARTÍN #17", "juan-baroffi": "BAROFFI #18", molinpower: "MOLINA #19", moreno: "MORENO #22", mario: "MARIO #25", ivan: "IVÁN #28", izan: "IZAN #38", anglada: "ANGLADA #79", juanjo: "JUANJO #80",
+};
+
+async function excelNarrative(playerId: string) {
+  const sheetName = playerSheets[playerId];
+  if (!sheetName) return { analysis: "", keysToUse: "", cautions: "", tacticalFit: "" };
+  try {
+    const source = path.join(getDataDirectory(), "imports", "Aldapan Gora.xlsx");
+    const workbook = XLSX.read(await fs.readFile(source), { type: "buffer", cellText: false, cellDates: false });
+    const sheet = workbook.Sheets[sheetName];
+    const value = (cell: string) => String(sheet?.[cell]?.v || "").trim();
+    return { analysis: value("B17"), keysToUse: value("B36"), cautions: value("B55"), tacticalFit: value("B74") };
+  } catch { return { analysis: "", keysToUse: "", cautions: "", tacticalFit: "" }; }
+}
+
 export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!(await isAdminRequest())) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   const { id } = await params;
   const database = await getDatabase();
-  const profile = await database.get("SELECT player_id as playerId, age, height_cm as heightCm, weight_kg as weightKg, dominant_foot as dominantFoot, natural_position as naturalPosition, secondary_positions as secondaryPositions, analysis, keys_to_use as keysToUse, cautions, tactical_fit as tacticalFit, updated_at as updatedAt FROM player_private_profiles WHERE player_id=?", id);
+  const stored = await database.get<PlayerProfile>("SELECT player_id as playerId, age, height_cm as heightCm, weight_kg as weightKg, dominant_foot as dominantFoot, natural_position as naturalPosition, secondary_positions as secondaryPositions, analysis, keys_to_use as keysToUse, cautions, tactical_fit as tacticalFit, updated_at as updatedAt FROM player_private_profiles WHERE player_id=?", id);
+  const seed = privatePlayerProfileSeeds[id];
+  const source = await excelNarrative(id);
+  const profile: PlayerProfile = {
+    playerId: id, age: stored?.age ?? seed?.age ?? null, heightCm: stored?.heightCm ?? seed?.heightCm ?? null, weightKg: stored?.weightKg ?? seed?.weightKg ?? null,
+    dominantFoot: stored?.dominantFoot || seed?.dominantFoot || "", naturalPosition: stored?.naturalPosition || seed?.naturalPosition || "", secondaryPositions: stored?.secondaryPositions || seed?.secondaryPositions || "",
+    analysis: stored?.analysis || source.analysis, keysToUse: stored?.keysToUse || source.keysToUse, cautions: stored?.cautions || source.cautions, tacticalFit: stored?.tacticalFit || source.tacticalFit, updatedAt: stored?.updatedAt,
+  };
   const comments = await database.all("SELECT comments.id, comments.user_email as userEmail, comments.author_name as authorName, comments.body, comments.created_at as createdAt, comments.updated_at as updatedAt, players.photo as authorPhoto FROM player_profile_comments comments LEFT JOIN users ON users.email=comments.user_email LEFT JOIN players ON players.id=users.playerId WHERE comments.player_id=? ORDER BY comments.created_at DESC", id);
-  return NextResponse.json({ profile: profile || { playerId: id, age: null, heightCm: null, weightKg: null, dominantFoot: "", naturalPosition: "", secondaryPositions: "", analysis: "", keysToUse: "", cautions: "", tacticalFit: "" }, comments });
+  return NextResponse.json({ profile, comments });
 }
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
