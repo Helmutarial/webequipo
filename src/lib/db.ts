@@ -59,6 +59,27 @@ async function initializeDatabase() {
     }
     await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('player_photo_recovery_20261026','1')");
   }
+  // Algunos perfiles conservaron su ficha tras las migraciones de nombres, pero no
+  // la referencia a la foto. Reintentamos buscando también por nombre y alias.
+  const photoRecoveryRetry = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='player_photo_recovery_retry_20261104'");
+  if (!photoRecoveryRetry) {
+    const uploadsDirectory = path.join(dataDirectory, "uploads");
+    const uploadedPhotos = await fs.readdir(uploadsDirectory).catch(() => [] as string[]);
+    const normalizePhotoKey = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es-ES").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    const playersWithoutPhoto = await database.all<{ id: string; name: string; alias: string }[]>("SELECT id,name,alias FROM players WHERE photo = ''");
+    for (const player of playersWithoutPhoto) {
+      const keys = new Set([player.id, player.name, player.alias].filter(Boolean).map(normalizePhotoKey));
+      if (keys.has("dan") || keys.has("jones")) { keys.add("dan"); keys.add("jones"); }
+      const candidates = uploadedPhotos.filter((filename) => {
+        const key = normalizePhotoKey(path.parse(filename).name);
+        return [...keys].some((candidate) => key === candidate || key.startsWith(`${candidate}-`));
+      });
+      if (!candidates.length) continue;
+      const newest = (await Promise.all(candidates.map(async (filename) => ({ filename, modified: (await fs.stat(path.join(uploadsDirectory, filename))).mtimeMs })))).sort((a, b) => b.modified - a.modified)[0];
+      await database.run("UPDATE players SET photo=?, updated_at=datetime('now') WHERE id=?", `/api/uploads/${newest.filename}`, player.id);
+    }
+    await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('player_photo_recovery_retry_20261104','1')");
+  }
   await database.exec(`CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE, passwordHash TEXT NOT NULL, name TEXT NOT NULL, playerId TEXT NOT NULL DEFAULT '', role TEXT NOT NULL DEFAULT 'USER', status TEXT NOT NULL DEFAULT 'PENDING', created_at TEXT NOT NULL, updated_at TEXT NOT NULL, approved_at TEXT)`);
   await database.exec(`CREATE TABLE IF NOT EXISTS matches (id TEXT PRIMARY KEY, season TEXT NOT NULL DEFAULT '2026/27', opponent TEXT NOT NULL, opponentShort TEXT NOT NULL, date TEXT NOT NULL, competition TEXT NOT NULL, venue TEXT NOT NULL, status TEXT NOT NULL, isHome INTEGER NOT NULL DEFAULT 1, duration INTEGER NOT NULL DEFAULT 90, homeScore INTEGER, awayScore INTEGER, starters TEXT NOT NULL, substitutes TEXT NOT NULL, events TEXT NOT NULL, updated_at TEXT NOT NULL)`);
   const duplicateCleanup = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='player_duplicate_cleanup_20261026'");
@@ -534,6 +555,85 @@ async function initializeDatabase() {
       }
     } catch (error) {
       console.error("No se ha podido completar la estructura del análisis de plantilla", error);
+    }
+  }
+  // Completa la radiografía de plantilla con todos los bloques del Excel. La
+  // primera importación solo incorporó un resumen y dejó fuera líneas enteras.
+  const squadAnalysisCompleteImported = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='squad_analysis_complete_import_20261104_v1'");
+  if (!squadAnalysisCompleteImported) {
+    const sourceFile = path.join(dataDirectory, "imports", "Aldapan Gora.xlsx");
+    try {
+      await fs.access(sourceFile);
+      const workbook = XLSX.read(await fs.readFile(sourceFile), { type: "buffer", cellText: false, cellDates: false });
+      const worksheet = workbook.Sheets["Análisis de plantilla"];
+      const existing = await database.get<{ payload: string }>("SELECT payload FROM squad_analysis WHERE id='2026-27'");
+      if (worksheet && existing) {
+        const content = (cell: string) => String(worksheet[cell]?.v || "").trim();
+        const profileText = (introCell: string, rows: number[] = []) => [content(introCell), ...rows.map((row) => {
+          const name = content(`P${row}`); const contribution = content(`Q${row}`); const protect = content(`U${row}`);
+          return name ? `${name}\nAporta: ${contribution}\nProteger: ${protect}` : "";
+        })].filter(Boolean).join("\n\n");
+        let payload: { sections?: { title: string; text: string; tone?: string }[]; profiles?: { title: string; text?: string; rows?: unknown[] }[]; needs?: { need: string; work: string }[]; observables?: { aspect: string; question: string }[]; opponentGuide?: { team?: string; strength?: string; key?: string; rival?: string; resources?: string; avoid?: string }[] } = {};
+        try { payload = JSON.parse(existing.payload || "{}"); } catch { payload = {}; }
+        const originalSummary = content("I23");
+        const completeSections = [
+          ["Conclusiones principales", "analysis", content("B4")], ["Sistemas recomendados", "fit", content("P4")], ["Valoración cualitativa", "analysis", content("B44")], ["Composición y equilibrio de la plantilla", "positive", content("P34")], ["Fortalezas y debilidades colectivas", "positive", content("B101")], ["Riesgos colectivos", "warning", content("B157")],
+          ["Defensas centrales", "analysis", content("P51")], ["Laterales y carrileros", "analysis", content("P72")], ["Centro del campo", "positive", content("P110")], ["Extremos", "warning", content("P162")], ["Delanteros", "warning", content("P204")],
+        ] as const;
+        const sectionByTitle = new Map((payload.sections || []).map((section) => [section.title, section]));
+        for (const [title, tone, text] of completeSections) {
+          if (!text) continue;
+          const previous = sectionByTitle.get(title);
+          const shouldRefresh = !previous || !previous.text || (title === "Valoración cualitativa" && previous.text === originalSummary);
+          sectionByTitle.set(title, shouldRefresh ? { title, tone, text } : previous);
+        }
+        payload.sections = completeSections.map(([title]) => sectionByTitle.get(title)).filter((section): section is { title: string; text: string; tone?: string } => Boolean(section));
+        const completeProfiles = [
+          { title: "Defensas centrales", text: profileText("P51", [68, 69, 70]) }, { title: "Laterales y carrileros", text: profileText("P72", [103, 104, 105, 106, 107]) }, { title: "Centro del campo", text: profileText("P110") }, { title: "Extremos", text: profileText("P162", [200, 201, 202]) }, { title: "Delanteros", text: profileText("P204") },
+        ].filter((profile) => profile.text);
+        const profileByTitle = new Map((payload.profiles || []).map((profile) => [profile.title, profile]));
+        for (const profile of completeProfiles) {
+          const previous = profileByTitle.get(profile.title);
+          if (!previous || !previous.text) profileByTitle.set(profile.title, profile);
+        }
+        payload.profiles = completeProfiles.map((profile) => profileByTitle.get(profile.title) || profile);
+        payload.needs = [21, 22, 23, 24, 25, 26, 27, 28, 29].map((row) => ({ need: content(`AA${row}`) || "A desarrollar", work: content(`AD${row}`) })).filter((item) => item.work);
+        payload.observables = [7, 8, 9, 10, 11, 12, 13, 14, 15].map((row) => ({ aspect: content(`AA${row}`), question: content(`AD${row}`) })).filter((item) => item.aspect);
+        payload.opponentGuide = [36, 37, 38, 39, 40, 41].map((row) => ({ team: content(`AA${row}`), strength: content(`AD${row}`), key: content(`AI${row}`) })).filter((item) => item.team);
+        await database.run("UPDATE squad_analysis SET payload=?, updated_at=datetime('now') WHERE id='2026-27'", JSON.stringify(payload));
+        await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('squad_analysis_complete_import_20261104_v1','1')");
+      }
+    } catch (error) {
+      console.error("No se ha podido completar el análisis de plantilla", error);
+    }
+  }
+  // Repara fichas que pudieron perder parte de su contenido al consolidar IDs
+  // (por ejemplo Dan/Jones). Solo rellena campos vacíos: no pisa ediciones de la Junta.
+  const privateProfilesCompleted = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='private_player_profiles_completion_20261104_v1'");
+  if (!privateProfilesCompleted) {
+    const sourceFile = path.join(dataDirectory, "imports", "Aldapan Gora.xlsx");
+    const playerBySheet = new Map([
+      ["MAURO #2", "mauro-m"], ["URKO #3", "urko"], ["JUANMA #4", "juanma"], ["REY #5", "rey"], ["JARE #7", "caspilla"], ["PADRINO #8", "padri"], ["ORTIZ #9", "ortiz"], ["SERGIO #10", "corisco"], ["PEDRO #11", "pedro"], ["JAVI #13", "javi"], ["DAN #14", "Jones"], ["DANI #15", "dani"], ["MARTIN #17", "krepox"], ["BAROFFI #18", "juan-baroffi"], ["MOLINA #19", "molinpower"], ["MORENO #22", "moreno"], ["MARIO #25", "mario"], ["IVAN #28", "ivan"], ["IZAN #38", "izan"], ["ANGLADA #79", "anglada"], ["JUANJO #80", "juanjo"],
+    ]);
+    const normalized = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+    try {
+      await fs.access(sourceFile);
+      const workbook = XLSX.read(await fs.readFile(sourceFile), { type: "buffer", cellText: false, cellDates: false });
+      for (const sheetName of workbook.SheetNames) {
+        const playerId = playerBySheet.get(normalized(sheetName));
+        if (!playerId || !(await database.get<{ id: string }>("SELECT id FROM players WHERE id=?", playerId))) continue;
+        const worksheet = workbook.Sheets[sheetName];
+        const content = (cell: string) => String(worksheet[cell]?.v || "").trim();
+        const previous = await database.get<{ age: number | null; height_cm: number | null; weight_kg: number | null; dominant_foot: string; natural_position: string; secondary_positions: string; analysis: string; keys_to_use: string; cautions: string; tactical_fit: string }>("SELECT age,height_cm,weight_kg,dominant_foot,natural_position,secondary_positions,analysis,keys_to_use,cautions,tactical_fit FROM player_private_profiles WHERE player_id=?", playerId);
+        const seed = privatePlayerProfileSeeds[playerId];
+        await database.run(
+          "INSERT INTO player_private_profiles (player_id,age,height_cm,weight_kg,dominant_foot,natural_position,secondary_positions,analysis,keys_to_use,cautions,tactical_fit,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,datetime('now')) ON CONFLICT(player_id) DO UPDATE SET age=excluded.age,height_cm=excluded.height_cm,weight_kg=excluded.weight_kg,dominant_foot=excluded.dominant_foot,natural_position=excluded.natural_position,secondary_positions=excluded.secondary_positions,analysis=excluded.analysis,keys_to_use=excluded.keys_to_use,cautions=excluded.cautions,tactical_fit=excluded.tactical_fit,updated_at=datetime('now')",
+          playerId, previous?.age ?? seed?.age ?? null, previous?.height_cm ?? seed?.heightCm ?? null, previous?.weight_kg ?? seed?.weightKg ?? null, previous?.dominant_foot || seed?.dominantFoot || "", previous?.natural_position || seed?.naturalPosition || "", previous?.secondary_positions || seed?.secondaryPositions || "", previous?.analysis || content("B17"), previous?.keys_to_use || content("B36"), previous?.cautions || content("B55"), previous?.tactical_fit || content("B74"),
+        );
+      }
+      await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('private_player_profiles_completion_20261104_v1','1')");
+    } catch (error) {
+      console.error("No se han podido completar las fichas privadas", error);
     }
   }
   const boardAccountsReset = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='board_admin_accounts_reset_20261104_v2'");

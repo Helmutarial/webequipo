@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAdminRequest } from "@/lib/auth";
 import { getDatabase } from "@/lib/db";
+import { sanitizeRichText } from "@/lib/rich-text";
 
 const asNumberOrNull = (value: unknown) => {
   const number = Number(value);
@@ -25,7 +26,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   if (!player) return NextResponse.json({ error: "Jugador no encontrado" }, { status: 404 });
   await database.run(
     "INSERT INTO player_private_profiles (player_id,age,height_cm,weight_kg,dominant_foot,natural_position,secondary_positions,analysis,keys_to_use,cautions,tactical_fit,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,datetime('now')) ON CONFLICT(player_id) DO UPDATE SET age=excluded.age,height_cm=excluded.height_cm,weight_kg=excluded.weight_kg,dominant_foot=excluded.dominant_foot,natural_position=excluded.natural_position,secondary_positions=excluded.secondary_positions,analysis=excluded.analysis,keys_to_use=excluded.keys_to_use,cautions=excluded.cautions,tactical_fit=excluded.tactical_fit,updated_at=datetime('now')",
-    id, asNumberOrNull(body.age), asNumberOrNull(body.heightCm), asNumberOrNull(body.weightKg), String(body.dominantFoot || "").trim(), String(body.naturalPosition || "").trim(), String(body.secondaryPositions || "").trim(), String(body.analysis || "").trim(), String(body.keysToUse || "").trim(), String(body.cautions || "").trim(), String(body.tacticalFit || "").trim(),
+    id, asNumberOrNull(body.age), asNumberOrNull(body.heightCm), asNumberOrNull(body.weightKg), String(body.dominantFoot || "").trim(), String(body.naturalPosition || "").trim(), String(body.secondaryPositions || "").trim(), sanitizeRichText(String(body.analysis || "").trim()), sanitizeRichText(String(body.keysToUse || "").trim()), sanitizeRichText(String(body.cautions || "").trim()), sanitizeRichText(String(body.tacticalFit || "").trim()),
   );
   return NextResponse.json({ ok: true });
 }
