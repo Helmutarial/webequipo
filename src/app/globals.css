@@ -8,6 +8,7 @@
 .legacy-home-nav,.legacy-builder-nav { display:none !important; }
 .site-nav { position:relative; z-index:5; }
 .nav-session { display:flex; align-items:center; gap:12px; color:var(--gold-light); font-size:11px; }
+.nav-user-photo,.nav-user-initial { width:30px; height:30px; border-radius:50%; border:1px solid var(--gold); object-fit:cover; background:#24262d; display:grid; place-items:center; color:var(--gold-light); font-weight:700; }
 .nav-session button { border:0; background:transparent; color:#8d8f96; cursor:pointer; font-size:10px; }
 .content-page { padding:78px 0 100px; }
 .page-intro,.admin-heading { display:flex; justify-content:space-between; align-items:end; margin-bottom:42px; }
@@ -160,6 +161,7 @@ h1,h2,h3,p { margin-top:0; } h1,h2,h3 { font-family:'Space Grotesk',sans-serif; 
 .private-player-view h3 { margin:0 0 9px; font:600 16px 'Space Grotesk'; }
 .private-player-view p { white-space:pre-wrap; color:#c6c8cd; line-height:1.65; }
 .private-player-view textarea { width:100%; min-height:190px; resize:vertical; box-sizing:border-box; padding:14px; border:1px solid var(--line); background:#0b0c0f; color:var(--cream); font:inherit; line-height:1.6; }
+.private-comments { border-left-color:var(--gold)!important; }.comment-compose { display:flex; gap:10px; align-items:end; }.comment-compose textarea { min-height:75px; }.comment-compose .text-action { padding:12px; border:1px solid var(--gold); }.comment-bubble { display:flex; align-items:flex-start; gap:10px; margin-top:14px; }.comment-bubble img,.comment-bubble>span { width:34px; height:34px; border-radius:50%; object-fit:cover; border:1px solid #b49a6a77; background:#262830; display:grid; place-items:center; color:var(--gold-light); font-size:11px; font-weight:700; }.comment-bubble p { margin:0; padding:10px 13px; background:#24262d; border-radius:3px 12px 12px 12px; flex:1; }.comment-bubble strong { display:block; color:var(--gold-light); font-size:11px; margin-bottom:4px; }
 .private-comments { margin-top:24px; padding-top:20px; border-top:1px solid var(--line); }
 .private-comments h4 { margin:0 0 14px; font:600 17px 'Space Grotesk'; }
 .private-comment-list { display:grid; gap:8px; margin-bottom:16px; }

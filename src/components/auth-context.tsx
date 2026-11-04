@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { Role } from "@/lib/team";
 
-type Session = { name: string; email: string; role: Role } | null;
+type Session = { name: string; email: string; role: Role; playerId?: string } | null;
 const AuthContext = createContext<{ session: Session; login: (email: string, password: string) => Promise<{ ok: boolean; message: string }>; logout: () => void }>({ session: null, login: async () => ({ ok: false, message: "No disponible" }), logout: () => undefined });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {

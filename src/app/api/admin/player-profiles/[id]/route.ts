@@ -12,7 +12,7 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
   const { id } = await params;
   const database = await getDatabase();
   const profile = await database.get("SELECT player_id as playerId, age, height_cm as heightCm, weight_kg as weightKg, dominant_foot as dominantFoot, natural_position as naturalPosition, secondary_positions as secondaryPositions, analysis, keys_to_use as keysToUse, cautions, tactical_fit as tacticalFit, updated_at as updatedAt FROM player_private_profiles WHERE player_id=?", id);
-  const comments = await database.all("SELECT id, user_email as userEmail, author_name as authorName, body, created_at as createdAt, updated_at as updatedAt FROM player_profile_comments WHERE player_id=? ORDER BY created_at DESC", id);
+  const comments = await database.all("SELECT comments.id, comments.user_email as userEmail, comments.author_name as authorName, comments.body, comments.created_at as createdAt, comments.updated_at as updatedAt, players.photo as authorPhoto FROM player_profile_comments comments LEFT JOIN users ON users.email=comments.user_email LEFT JOIN players ON players.id=users.playerId WHERE comments.player_id=? ORDER BY comments.created_at DESC", id);
   return NextResponse.json({ profile: profile || { playerId: id, age: null, heightCm: null, weightKg: null, dominantFoot: "", naturalPosition: "", secondaryPositions: "", analysis: "", keysToUse: "", cautions: "", tacticalFit: "" }, comments });
 }
 
