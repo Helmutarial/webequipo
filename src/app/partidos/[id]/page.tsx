@@ -190,7 +190,7 @@ export default function MatchPage() {
       <div><span className="section-label">JUGADOR DEL PARTIDO</span><h2>MVP: {playerName(mvp.player)}</h2><p>{mvpPlayer?.alias || "Partido enorme de principio a fin."}</p></div>
       {mvpPlayer?.photo ? <img src={mvpPlayer.photo} alt={`Foto de ${mvpPlayer.name}`} /> : <div className="mvp-photo-placeholder">{playerName(mvp.player).slice(0, 1)}</div>}
     </section> : null}
-    {isAdmin && match.competition.startsWith("Liga") ? <section className="match-detail-card private-match-report">
+    {isAdmin && match.status === "finished" ? <section className="match-detail-card private-match-report">
       <div className="private-player-head"><div><span className="section-label">JUNTA · INFORME PRIVADO</span><h2>Análisis del partido</h2></div><button className="admin-edit-button" type="button" onClick={() => setEditingReport((value) => !value)}>{editingReport ? "Cancelar" : "Editar informe"}</button></div>
       {editingReport ? <div className="private-report-editor">{([
         ["overview", "Contexto y resumen", "analysis"], ["offensive", "Organización ofensiva", "analysis"], ["defensive", "Organización defensiva", "analysis"], ["transitions", "Transición ofensiva", "positive"], ["setPieces", "Transición defensiva y balón parado", "warning"], ["strengths", "Fortalezas y debilidades", "positive"], ["conclusions", "Conclusiones principales", "fit"], ["needs", "Necesidades del modelo", "warning"],

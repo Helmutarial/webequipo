@@ -457,6 +457,35 @@ async function initializeDatabase() {
       console.error("No se han podido importar las valoraciones privadas de jugadores", error);
     }
   }
+  const preseasonReportsImported = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='private_preseason_reports_import_20261104_v1'");
+  if (!preseasonReportsImported) {
+    const sourceFile = path.join(dataDirectory, "imports", "Aldapan Gora.xlsx");
+    try {
+      await fs.access(sourceFile);
+      const workbook = XLSX.read(await fs.readFile(sourceFile), { type: "buffer", cellText: false, cellDates: false });
+      const worksheet = workbook.Sheets["Análisis de PRETEMPORADA"];
+      if (worksheet) {
+        const content = (cell: string) => String(worksheet[cell]?.v || "").trim();
+        const report = (matchId: string, column: string) => database.run(
+          "INSERT OR IGNORE INTO match_private_reports (match_id,overview,offensive,defensive,transitions,set_pieces,strengths,conclusions,needs,updated_at) VALUES (?,?,?,?,?,?,?,?,?,datetime('now'))",
+          matchId, [content(`${column}32`), content(`${column}40`)].filter(Boolean).join("\n\n"), content(`${column}78`), content(`${column}85`), content(`${column}92`), [content(`${column}99`), content(`${column}102`)].filter(Boolean).join("\n\n"), content(`${column}112`), content(`${column}148`), [content(`${column}161`), content(`${column}182`)].filter(Boolean).join("\n\n"),
+        );
+        await report("aldapan-atletico-jabalies-2026-09-20", "B");
+        await report("amistoso-alacran-2026-10-11", "CL");
+        const playerIds = new Map([ ["JAVI", "javi"], ["DAN JONES", "Jones"], ["DANIEL JONES", "Jones"], ["DANI", "dani"], ["MARTIN", "krepox"], ["MARTÍN", "krepox"], ["MAURO", "mauro-m"], ["REY", "rey"], ["URKO", "urko"], ["JUANMA", "juanma"], ["SERGIO", "corisco"], ["MOLINA", "molinpower"], ["IZAN", "izan"], ["JUANJO", "juanjo"], ["PEDRO", "pedro"], ["BAROFFI", "juan-baroffi"], ["JUAN BAROFFI", "juan-baroffi"], ["MORENO", "moreno"], ["ORTIZ", "ortiz"], ["JARE", "caspilla"], ["PADRINO", "padri"], ["PADRI", "padri"], ["IVAN", "ivan"], ["IVÁN", "ivan"], ["MARIO", "mario"] ]);
+        const normal = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+        const rows = [196, 206, 216, 226, 236, 246, 256];
+        const playerReport = async (matchId: string, nameColumn: string, evaluationColumn: string) => {
+          for (const row of rows) { const playerId = playerIds.get(normal(content(`${nameColumn}${row}`))); const evaluation = content(`${evaluationColumn}${row}`); if (playerId && evaluation) await database.run("INSERT OR IGNORE INTO match_player_reports (match_id,player_id,evaluation,updated_at) VALUES (?,?,?,datetime('now'))", matchId, playerId, evaluation); }
+        };
+        await playerReport("aldapan-atletico-jabalies-2026-09-20", "B", "N");
+        await playerReport("amistoso-alacran-2026-10-11", "CL", "CX");
+        await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('private_preseason_reports_import_20261104_v1','1')");
+      }
+    } catch (error) {
+      console.error("No se han podido importar los informes de pretemporada", error);
+    }
+  }
   const squadAnalysisImported = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='squad_analysis_import_20261104_v1'");
   if (!squadAnalysisImported) {
     const sourceFile = path.join(dataDirectory, "imports", "Aldapan Gora.xlsx");
@@ -472,6 +501,7 @@ async function initializeDatabase() {
             { title: "Conclusiones principales", tone: "analysis", text: content("B4") }, { title: "Sistemas recomendados", tone: "fit", text: content("P4") }, { title: "Valoración cualitativa", tone: "analysis", text: content("I23") }, { title: "Composición y equilibrio de la plantilla", tone: "positive", text: content("P34") }, { title: "Fortalezas y debilidades colectivas", tone: "positive", text: content("B101") }, { title: "Riesgos colectivos", tone: "warning", text: content("B157") }, { title: "Defensas centrales", tone: "analysis", text: content("P51") }, { title: "Laterales y carrileros", tone: "analysis", text: content("P72") }, { title: "Centro del campo", tone: "positive", text: content("P110") }, { title: "Extremos", tone: "warning", text: content("P162") }, { title: "Delanteros", tone: "warning", text: content("P204") },
           ].filter((section) => section.text),
           needs: list([21, 22, 23, 24, 25, 26, 27, 28, 29], "AA", "AD"),
+          observables: [7, 8, 9, 10, 11, 12, 13, 14, 15].map((row) => ({ aspect: content(`AA${row}`), question: content(`AD${row}`) })).filter((item) => item.aspect),
           opponentGuide: [36, 37, 38, 39, 40, 41].map((row) => ({ rival: content(`AA${row}`), resources: content(`AD${row}`), avoid: content(`AI${row}`) })).filter((item) => item.rival),
           profiles: [
             { title: "Centrales", rows: list([68, 69, 70], "P", "Q", "U") }, { title: "Laterales", rows: list([103, 104, 105, 106, 107], "P", "Q", "U") }, { title: "Extremos", rows: list([200, 201, 202], "P", "Q", "U") },
@@ -482,6 +512,28 @@ async function initializeDatabase() {
       }
     } catch (error) {
       console.error("No se ha podido importar el análisis de plantilla", error);
+    }
+  }
+  const squadAnalysisStructureImported = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='squad_analysis_structure_import_20261104_v1'");
+  if (!squadAnalysisStructureImported) {
+    const sourceFile = path.join(dataDirectory, "imports", "Aldapan Gora.xlsx");
+    try {
+      await fs.access(sourceFile);
+      const workbook = XLSX.read(await fs.readFile(sourceFile), { type: "buffer", cellText: false, cellDates: false });
+      const worksheet = workbook.Sheets["Análisis de plantilla"];
+      const existing = await database.get<{ payload: string }>("SELECT payload FROM squad_analysis WHERE id='2026-27'");
+      if (worksheet && existing) {
+        const content = (cell: string) => String(worksheet[cell]?.v || "").trim();
+        let payload: Record<string, unknown> = {};
+        try { payload = JSON.parse(existing.payload || "{}"); } catch { payload = {}; }
+        if (!Array.isArray(payload.observables) || payload.observables.length === 0) payload.observables = [7, 8, 9, 10, 11, 12, 13, 14, 15].map((row) => ({ aspect: content(`AA${row}`), question: content(`AD${row}`) })).filter((item) => item.aspect);
+        const oldNeeds = Array.isArray(payload.needs) ? payload.needs as { need?: string }[] : [];
+        if (oldNeeds.some((item) => item.need === "A estudiar")) payload.needs = [21, 22, 23, 24, 25, 26, 27, 28, 29].map((row) => ({ need: content(`AD${row}`), work: "" })).filter((item) => item.need);
+        await database.run("UPDATE squad_analysis SET payload=?, updated_at=datetime('now') WHERE id='2026-27'", JSON.stringify(payload));
+        await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('squad_analysis_structure_import_20261104_v1','1')");
+      }
+    } catch (error) {
+      console.error("No se ha podido completar la estructura del análisis de plantilla", error);
     }
   }
   const boardAccountsReset = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='board_admin_accounts_reset_20261104_v2'");
