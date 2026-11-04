@@ -13,27 +13,27 @@ export default function LoginPage() {
   const [error, setError] = useState("");
 
   if (session) {
-    router.replace("/admin");
+    router.replace("/equipo");
     return null;
   }
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     const result = await login(email, password);
-    if (result.ok) router.push("/admin");
+    if (result.ok) router.push("/equipo");
     else setError(result.message);
   };
 
   return <main className="auth-page">
     <div className="auth-card">
-      <span className="section-label">PANEL PRIVADO</span>
+      <span className="section-label">ÁREA DE JUNTA</span>
       <h1>Iniciar sesion<span>.</span></h1>
       <p>Accede para gestionar el contenido autorizado del equipo.</p>
       <form onSubmit={submit}>
         <label>Correo electronico<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
         <label>Contrasena<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} /></label>
         {error && <small className="form-error">{error}</small>}
-        <button className="primary-button" type="submit">Entrar al panel ↗</button>
+        <button className="primary-button" type="submit">Entrar ↗</button>
       </form>
       <small className="auth-note">¿Eres jugador y no tienes cuenta? <Link href="/crear-cuenta">Crear cuenta</Link></small>
     </div>
