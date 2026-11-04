@@ -28,6 +28,8 @@ async function initializeDatabase() {
   await database.exec(`CREATE TABLE IF NOT EXISTS players (id TEXT PRIMARY KEY, name TEXT NOT NULL, alias TEXT NOT NULL DEFAULT '', number INTEGER NOT NULL, position TEXT NOT NULL DEFAULT 'Jugador', photo TEXT NOT NULL DEFAULT '', goals INTEGER NOT NULL DEFAULT 0, assists INTEGER NOT NULL DEFAULT 0, appearances INTEGER NOT NULL DEFAULT 0, minutes INTEGER NOT NULL DEFAULT 0, starterAppearances INTEGER NOT NULL DEFAULT 0, substituteAppearances INTEGER NOT NULL DEFAULT 0, mvpCount INTEGER NOT NULL DEFAULT 0, bio TEXT NOT NULL DEFAULT '', active INTEGER NOT NULL DEFAULT 1, updated_at TEXT NOT NULL)`);
   await database.exec(`CREATE TABLE IF NOT EXISTS player_private_profiles (player_id TEXT PRIMARY KEY, age INTEGER, height_cm INTEGER, weight_kg INTEGER, dominant_foot TEXT NOT NULL DEFAULT '', natural_position TEXT NOT NULL DEFAULT '', secondary_positions TEXT NOT NULL DEFAULT '', analysis TEXT NOT NULL DEFAULT '', keys_to_use TEXT NOT NULL DEFAULT '', cautions TEXT NOT NULL DEFAULT '', tactical_fit TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL, FOREIGN KEY(player_id) REFERENCES players(id))`);
   await database.exec(`CREATE TABLE IF NOT EXISTS player_profile_comments (id TEXT PRIMARY KEY, player_id TEXT NOT NULL, user_email TEXT NOT NULL, author_name TEXT NOT NULL, body TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, FOREIGN KEY(player_id) REFERENCES players(id))`);
+  await database.exec(`CREATE TABLE IF NOT EXISTS match_private_reports (match_id TEXT PRIMARY KEY, overview TEXT NOT NULL DEFAULT '', offensive TEXT NOT NULL DEFAULT '', defensive TEXT NOT NULL DEFAULT '', transitions TEXT NOT NULL DEFAULT '', set_pieces TEXT NOT NULL DEFAULT '', strengths TEXT NOT NULL DEFAULT '', conclusions TEXT NOT NULL DEFAULT '', needs TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL, FOREIGN KEY(match_id) REFERENCES matches(id))`);
+  await database.exec(`CREATE TABLE IF NOT EXISTS match_report_comments (id TEXT PRIMARY KEY, match_id TEXT NOT NULL, user_email TEXT NOT NULL, author_name TEXT NOT NULL, body TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, FOREIGN KEY(match_id) REFERENCES matches(id))`);
   const columns = await database.all<{ name: string }[]>("PRAGMA table_info(players)");
   const existingColumns = new Set(columns.map((column) => column.name));
   for (const [name, definition] of [["minutes", "INTEGER NOT NULL DEFAULT 0"], ["starterAppearances", "INTEGER NOT NULL DEFAULT 0"], ["substituteAppearances", "INTEGER NOT NULL DEFAULT 0"], ["mvpCount", "INTEGER NOT NULL DEFAULT 0"], ["active", "INTEGER NOT NULL DEFAULT 1"]] as const) {
@@ -389,6 +391,37 @@ async function initializeDatabase() {
       await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('private_player_profiles_narratives_import_20261104_v1','1')");
     } catch (error) {
       console.error("No se han podido importar los textos privados de los jugadores", error);
+    }
+  }
+  const privateMatchReportsImported = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='private_match_reports_import_20261104_v1'");
+  if (!privateMatchReportsImported) {
+    const sourceFile = path.join(dataDirectory, "imports", "Aldapan Gora.xlsx");
+    try {
+      await fs.access(sourceFile);
+      const workbook = XLSX.read(await fs.readFile(sourceFile), { type: "buffer", cellText: false, cellDates: false });
+      const worksheet = workbook.Sheets["Análisis de partidos"];
+      if (worksheet) {
+        const content = (cell: string) => String(worksheet[cell]?.v || "").trim();
+        const reports = [
+          {
+            matchId: "liga-2026-27-tato",
+            overview: [content("B32"), content("B40")].filter(Boolean).join("\n\n"),
+            offensive: content("B78"), defensive: content("B85"), transitions: content("B92"), setPieces: [content("B99"), content("B102")].filter(Boolean).join("\n\n"), strengths: content("B112"), conclusions: content("B148"), needs: [content("B161"), content("B182")].filter(Boolean).join("\n\n"),
+          },
+          {
+            matchId: "liga-2026-27-aula",
+            overview: [content("CL32"), content("CL40")].filter(Boolean).join("\n\n"),
+            offensive: content("CL78"), defensive: content("CL85"), transitions: content("CL92"), setPieces: [content("CL99"), content("CL102")].filter(Boolean).join("\n\n"), strengths: content("CL112"), conclusions: content("CL148"), needs: [content("CL161"), content("CL182")].filter(Boolean).join("\n\n"),
+          },
+        ];
+        for (const report of reports) await database.run(
+          "INSERT OR IGNORE INTO match_private_reports (match_id,overview,offensive,defensive,transitions,set_pieces,strengths,conclusions,needs,updated_at) VALUES (?,?,?,?,?,?,?,?,?,datetime('now'))",
+          report.matchId, report.overview, report.offensive, report.defensive, report.transitions, report.setPieces, report.strengths, report.conclusions, report.needs,
+        );
+        await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('private_match_reports_import_20261104_v1','1')");
+      }
+    } catch (error) {
+      console.error("No se han podido importar los informes privados de los partidos", error);
     }
   }
   const boardAccountsReset = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='board_admin_accounts_reset_20261104_v2'");
