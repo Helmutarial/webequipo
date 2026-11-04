@@ -15,6 +15,7 @@ const AssistIcon = () => <GiSoccerKick className="match-event-icon assist" aria-
 
 type MatchReport = { overview: string; offensive: string; defensive: string; transitions: string; setPieces: string; strengths: string; conclusions: string; needs: string };
 type MatchReportComment = { id: string; authorName: string; body: string; createdAt: string; authorPhoto?: string };
+type PlayerMatchReport = { playerId: string; evaluation: string; updatedAt?: string };
 const emptyReport: MatchReport = { overview: "", offensive: "", defensive: "", transitions: "", setPieces: "", strengths: "", conclusions: "", needs: "" };
 
 export default function MatchPage() {
@@ -25,9 +26,15 @@ export default function MatchPage() {
   const isAdmin = session?.role === "ADMIN";
   const [report, setReport] = useState<MatchReport>(emptyReport);
   const [comments, setComments] = useState<MatchReportComment[]>([]);
+  const [playerReports, setPlayerReports] = useState<PlayerMatchReport[]>([]);
+  const [selectedPlayerId, setSelectedPlayerId] = useState("");
+  const [selectedPlayerReport, setSelectedPlayerReport] = useState<PlayerMatchReport | null>(null);
+  const [playerReportComments, setPlayerReportComments] = useState<MatchReportComment[]>([]);
   const [editingReport, setEditingReport] = useState(false);
+  const [editingPlayerReport, setEditingPlayerReport] = useState(false);
   const [savingReport, setSavingReport] = useState(false);
   const [commentDraft, setCommentDraft] = useState("");
+  const [playerCommentDraft, setPlayerCommentDraft] = useState("");
   const match = matches.find((item) => item.id === id);
   const playerFor = (reference: string | undefined) => players.find((player) => player.id === reference || normalize(player.id) === normalize(reference || "") || normalize(player.id.split("-").at(-1) || "") === normalize(reference || ""));
   const playerName = (playerId: string) => playerFor(playerId)?.name || playerId;
@@ -38,6 +45,8 @@ export default function MatchPage() {
     const data = await response.json();
     setReport({ ...emptyReport, ...(data.report || {}) });
     setComments(data.comments || []);
+    setPlayerReports(data.playerReports || []);
+    setSelectedPlayerId((current) => current || data.playerReports?.[0]?.playerId || "");
   };
 
   useEffect(() => { if (isAdmin && id) void loadReport(); }, [isAdmin, id]);
@@ -56,6 +65,34 @@ export default function MatchPage() {
     if (!response.ok) return;
     setCommentDraft("");
     await loadReport();
+  };
+
+  const loadPlayerReport = async () => {
+    if (!selectedPlayerId) return;
+    const response = await fetch(`/api/admin/match-reports/${id}/player-reports/${encodeURIComponent(selectedPlayerId)}`, { cache: "no-store" });
+    if (!response.ok) return;
+    const data = await response.json();
+    setSelectedPlayerReport(data.report || null);
+    setPlayerReportComments(data.comments || []);
+  };
+
+  useEffect(() => { if (isAdmin && selectedPlayerId) void loadPlayerReport(); }, [isAdmin, selectedPlayerId, id]);
+
+  const savePlayerReport = async () => {
+    if (!selectedPlayerReport) return;
+    setSavingReport(true);
+    const response = await fetch(`/api/admin/match-reports/${id}/player-reports/${encodeURIComponent(selectedPlayerReport.playerId)}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ evaluation: selectedPlayerReport.evaluation }) });
+    setSavingReport(false);
+    if (response.ok) { setEditingPlayerReport(false); await loadReport(); }
+  };
+
+  const addPlayerComment = async () => {
+    const body = playerCommentDraft.trim();
+    if (!body || !selectedPlayerId) return;
+    const response = await fetch(`/api/admin/match-reports/${id}/player-reports/${encodeURIComponent(selectedPlayerId)}/comments`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body }) });
+    if (!response.ok) return;
+    setPlayerCommentDraft("");
+    await loadPlayerReport();
   };
 
   if (loading) return <main className="content-page shell"><p className="muted">Cargando partido...</p></main>;
@@ -165,6 +202,13 @@ export default function MatchPage() {
         <div className="comment-compose"><textarea value={commentDraft} onChange={(event) => setCommentDraft(event.target.value)} placeholder="Añade una nota interna sobre el partido..." maxLength={3000} /><button className="admin-save-button" type="button" onClick={() => void addComment()}>Añadir comentario</button></div>
         <div className="comment-list">{comments.map((comment) => <article className="comment-bubble" key={comment.id}>{comment.authorPhoto ? <img src={comment.authorPhoto} alt="" /> : <span>{comment.authorName.slice(0, 1)}</span>}<div><b>{comment.authorName}</b><small>{new Date(comment.createdAt).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })}</small><p>{comment.body}</p></div></article>)}</div>
       </div>
+      {playerReports.length ? <div className="match-player-reports">
+        <div className="private-comments-head"><div><span className="section-label">RENDIMIENTO INDIVIDUAL</span><h3>Valoraciones por jugador</h3></div><span>{playerReports.length}</span></div>
+        <div className="match-player-report-grid">{playerReports.map((item) => { const player = playerFor(item.playerId); return <button className={selectedPlayerId === item.playerId ? "active" : ""} type="button" key={item.playerId} onClick={() => { setSelectedPlayerId(item.playerId); setEditingPlayerReport(false); }}>{player?.photo ? <img src={player.photo} alt="" /> : <span>{playerName(item.playerId).slice(0, 1)}</span>}<b>{playerName(item.playerId)}</b></button>; })}</div>
+        {selectedPlayerReport ? <div className="match-player-report-detail"><div className="private-player-head"><div><span className="section-label">RENDIMIENTO · {match.opponent.toUpperCase()}</span><h3>{playerName(selectedPlayerReport.playerId)}</h3></div><button className="admin-edit-button" type="button" onClick={() => setEditingPlayerReport((value) => !value)}>{editingPlayerReport ? "Cancelar" : "Editar valoración"}</button></div>{editingPlayerReport ? <><textarea value={selectedPlayerReport.evaluation} onChange={(event) => setSelectedPlayerReport((current) => current ? { ...current, evaluation: event.target.value } : current)} /><button className="admin-save-button" disabled={savingReport} type="button" onClick={() => void savePlayerReport()}>{savingReport ? "Guardando..." : "Guardar valoración"}</button></> : <p>{selectedPlayerReport.evaluation || "Pendiente de valoración."}</p>}
+          <div className="private-comments player-report-comments"><div className="private-comments-head"><h3>Comentarios sobre este rendimiento</h3><span>{playerReportComments.length}</span></div><div className="comment-compose"><textarea value={playerCommentDraft} onChange={(event) => setPlayerCommentDraft(event.target.value)} placeholder={`Añade una nota sobre ${playerName(selectedPlayerReport.playerId)}...`} maxLength={3000} /><button className="admin-save-button" type="button" onClick={() => void addPlayerComment()}>Añadir comentario</button></div><div className="comment-list">{playerReportComments.map((comment) => <article className="comment-bubble" key={comment.id}>{comment.authorPhoto ? <img src={comment.authorPhoto} alt="" /> : <span>{comment.authorName.slice(0, 1)}</span>}<div><b>{comment.authorName}</b><small>{new Date(comment.createdAt).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })}</small><p>{comment.body}</p></div></article>)}</div></div>
+        </div> : null}
+      </div> : null}
     </section> : null}
   </main>;
 }

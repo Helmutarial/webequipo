@@ -30,6 +30,8 @@ async function initializeDatabase() {
   await database.exec(`CREATE TABLE IF NOT EXISTS player_profile_comments (id TEXT PRIMARY KEY, player_id TEXT NOT NULL, user_email TEXT NOT NULL, author_name TEXT NOT NULL, body TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, FOREIGN KEY(player_id) REFERENCES players(id))`);
   await database.exec(`CREATE TABLE IF NOT EXISTS match_private_reports (match_id TEXT PRIMARY KEY, overview TEXT NOT NULL DEFAULT '', offensive TEXT NOT NULL DEFAULT '', defensive TEXT NOT NULL DEFAULT '', transitions TEXT NOT NULL DEFAULT '', set_pieces TEXT NOT NULL DEFAULT '', strengths TEXT NOT NULL DEFAULT '', conclusions TEXT NOT NULL DEFAULT '', needs TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL, FOREIGN KEY(match_id) REFERENCES matches(id))`);
   await database.exec(`CREATE TABLE IF NOT EXISTS match_report_comments (id TEXT PRIMARY KEY, match_id TEXT NOT NULL, user_email TEXT NOT NULL, author_name TEXT NOT NULL, body TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, FOREIGN KEY(match_id) REFERENCES matches(id))`);
+  await database.exec(`CREATE TABLE IF NOT EXISTS match_player_reports (match_id TEXT NOT NULL, player_id TEXT NOT NULL, evaluation TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL, PRIMARY KEY(match_id, player_id), FOREIGN KEY(match_id) REFERENCES matches(id), FOREIGN KEY(player_id) REFERENCES players(id))`);
+  await database.exec(`CREATE TABLE IF NOT EXISTS match_player_report_comments (id TEXT PRIMARY KEY, match_id TEXT NOT NULL, player_id TEXT NOT NULL, user_email TEXT NOT NULL, author_name TEXT NOT NULL, body TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, FOREIGN KEY(match_id) REFERENCES matches(id), FOREIGN KEY(player_id) REFERENCES players(id))`);
   const columns = await database.all<{ name: string }[]>("PRAGMA table_info(players)");
   const existingColumns = new Set(columns.map((column) => column.name));
   for (const [name, definition] of [["minutes", "INTEGER NOT NULL DEFAULT 0"], ["starterAppearances", "INTEGER NOT NULL DEFAULT 0"], ["substituteAppearances", "INTEGER NOT NULL DEFAULT 0"], ["mvpCount", "INTEGER NOT NULL DEFAULT 0"], ["active", "INTEGER NOT NULL DEFAULT 1"]] as const) {
@@ -422,6 +424,36 @@ async function initializeDatabase() {
       }
     } catch (error) {
       console.error("No se han podido importar los informes privados de los partidos", error);
+    }
+  }
+  const privateMatchPlayerReportsImported = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='private_match_player_reports_import_20261104_v1'");
+  if (!privateMatchPlayerReportsImported) {
+    const sourceFile = path.join(dataDirectory, "imports", "Aldapan Gora.xlsx");
+    try {
+      await fs.access(sourceFile);
+      const workbook = XLSX.read(await fs.readFile(sourceFile), { type: "buffer", cellText: false, cellDates: false });
+      const worksheet = workbook.Sheets["Análisis de partidos"];
+      if (worksheet) {
+        const playerIds = new Map([
+          ["JAVI", "javi"], ["DANIEL JONES", "Jones"], ["DAN", "Jones"], ["REY", "rey"], ["MAURO", "mauro-m"], ["DANI", "dani"], ["JUANMA", "juanma"], ["URKO", "urko"], ["MOLINA", "molinpower"], ["IZAN", "izan"], ["SERGIO", "corisco"], ["PADRINO", "padri"], ["PADRI", "padri"], ["JARE", "caspilla"], ["ORTIZ", "ortiz"], ["MORENO", "moreno"], ["JUANJO", "juanjo"], ["BAROFFI", "juan-baroffi"], ["JUAN BAROFFI", "juan-baroffi"], ["MARTIN", "krepox"], ["MARTÍN", "krepox"], ["IVAN", "ivan"], ["IVÁN", "ivan"], ["MARIO", "mario"], ["PEDRO", "pedro"],
+        ]);
+        const normalizePlayerName = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+        const content = (cell: string) => String(worksheet[cell]?.v || "").trim();
+        const rows = [196, 206, 216, 226, 236, 246, 256, 275, 285, 295, 305, 315, 325, 335, 355, 365, 375, 385];
+        const importColumn = async (matchId: string, nameColumn: string, evaluationColumn: string) => {
+          for (const row of rows) {
+            const playerId = playerIds.get(normalizePlayerName(content(`${nameColumn}${row}`)));
+            const evaluation = content(`${evaluationColumn}${row}`);
+            if (!playerId || !evaluation) continue;
+            await database.run("INSERT OR IGNORE INTO match_player_reports (match_id,player_id,evaluation,updated_at) VALUES (?,?,?,datetime('now'))", matchId, playerId, evaluation);
+          }
+        };
+        await importColumn("liga-2026-27-tato", "B", "N");
+        await importColumn("liga-2026-27-aula", "CL", "CX");
+        await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('private_match_player_reports_import_20261104_v1','1')");
+      }
+    } catch (error) {
+      console.error("No se han podido importar las valoraciones privadas de jugadores", error);
     }
   }
   const boardAccountsReset = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='board_admin_accounts_reset_20261104_v2'");
