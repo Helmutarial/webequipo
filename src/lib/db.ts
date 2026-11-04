@@ -32,6 +32,7 @@ async function initializeDatabase() {
   await database.exec(`CREATE TABLE IF NOT EXISTS match_report_comments (id TEXT PRIMARY KEY, match_id TEXT NOT NULL, user_email TEXT NOT NULL, author_name TEXT NOT NULL, body TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, FOREIGN KEY(match_id) REFERENCES matches(id))`);
   await database.exec(`CREATE TABLE IF NOT EXISTS match_player_reports (match_id TEXT NOT NULL, player_id TEXT NOT NULL, evaluation TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL, PRIMARY KEY(match_id, player_id), FOREIGN KEY(match_id) REFERENCES matches(id), FOREIGN KEY(player_id) REFERENCES players(id))`);
   await database.exec(`CREATE TABLE IF NOT EXISTS match_player_report_comments (id TEXT PRIMARY KEY, match_id TEXT NOT NULL, player_id TEXT NOT NULL, user_email TEXT NOT NULL, author_name TEXT NOT NULL, body TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, FOREIGN KEY(match_id) REFERENCES matches(id), FOREIGN KEY(player_id) REFERENCES players(id))`);
+  await database.exec(`CREATE TABLE IF NOT EXISTS squad_analysis (id TEXT PRIMARY KEY, payload TEXT NOT NULL DEFAULT '{}', updated_at TEXT NOT NULL)`);
   const columns = await database.all<{ name: string }[]>("PRAGMA table_info(players)");
   const existingColumns = new Set(columns.map((column) => column.name));
   for (const [name, definition] of [["minutes", "INTEGER NOT NULL DEFAULT 0"], ["starterAppearances", "INTEGER NOT NULL DEFAULT 0"], ["substituteAppearances", "INTEGER NOT NULL DEFAULT 0"], ["mvpCount", "INTEGER NOT NULL DEFAULT 0"], ["active", "INTEGER NOT NULL DEFAULT 1"]] as const) {
@@ -454,6 +455,33 @@ async function initializeDatabase() {
       }
     } catch (error) {
       console.error("No se han podido importar las valoraciones privadas de jugadores", error);
+    }
+  }
+  const squadAnalysisImported = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='squad_analysis_import_20261104_v1'");
+  if (!squadAnalysisImported) {
+    const sourceFile = path.join(dataDirectory, "imports", "Aldapan Gora.xlsx");
+    try {
+      await fs.access(sourceFile);
+      const workbook = XLSX.read(await fs.readFile(sourceFile), { type: "buffer", cellText: false, cellDates: false });
+      const worksheet = workbook.Sheets["Análisis de plantilla"];
+      if (worksheet) {
+        const content = (cell: string) => String(worksheet[cell]?.v || "").trim();
+        const list = (rows: number[], nameColumn: string, detailColumn: string, protectColumn?: string) => rows.map((row) => ({ name: content(`${nameColumn}${row}`), detail: content(`${detailColumn}${row}`), protect: protectColumn ? content(`${protectColumn}${row}`) : "" })).filter((item) => item.name || item.detail || item.protect);
+        const payload = {
+          sections: [
+            { title: "Conclusiones principales", tone: "analysis", text: content("B4") }, { title: "Sistemas recomendados", tone: "fit", text: content("P4") }, { title: "Valoración cualitativa", tone: "analysis", text: content("I23") }, { title: "Composición y equilibrio de la plantilla", tone: "positive", text: content("P34") }, { title: "Fortalezas y debilidades colectivas", tone: "positive", text: content("B101") }, { title: "Riesgos colectivos", tone: "warning", text: content("B157") }, { title: "Defensas centrales", tone: "analysis", text: content("P51") }, { title: "Laterales y carrileros", tone: "analysis", text: content("P72") }, { title: "Centro del campo", tone: "positive", text: content("P110") }, { title: "Extremos", tone: "warning", text: content("P162") }, { title: "Delanteros", tone: "warning", text: content("P204") },
+          ].filter((section) => section.text),
+          needs: list([21, 22, 23, 24, 25, 26, 27, 28, 29], "AA", "AD"),
+          opponentGuide: [36, 37, 38, 39, 40, 41].map((row) => ({ rival: content(`AA${row}`), resources: content(`AD${row}`), avoid: content(`AI${row}`) })).filter((item) => item.rival),
+          profiles: [
+            { title: "Centrales", rows: list([68, 69, 70], "P", "Q", "U") }, { title: "Laterales", rows: list([103, 104, 105, 106, 107], "P", "Q", "U") }, { title: "Extremos", rows: list([200, 201, 202], "P", "Q", "U") },
+          ],
+        };
+        await database.run("INSERT OR IGNORE INTO squad_analysis (id,payload,updated_at) VALUES ('2026-27',?,datetime('now'))", JSON.stringify(payload));
+        await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('squad_analysis_import_20261104_v1','1')");
+      }
+    } catch (error) {
+      console.error("No se ha podido importar el análisis de plantilla", error);
     }
   }
   const boardAccountsReset = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='board_admin_accounts_reset_20261104_v2'");
