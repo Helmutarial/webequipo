@@ -114,7 +114,9 @@ export default function MatchPage() {
     if (assistant) eventMarks.set(assistant, { ...(eventMarks.get(assistant) || { goals: 0, assists: 0 }), assists: (eventMarks.get(assistant)?.assists || 0) + 1 });
   }
   const starterId = (name: string) => match.starters.find((reference) => normalize(playerName(reference)) === normalize(name) || normalize(reference) === normalize(name));
-  const preferredFormation = match.id === "liga-2026-27-aula"
+  const preferredFormation = match.id === "liga-2026-27-atletico-jabalis"
+    ? [["Baroffi"], ["Ortiz", "Juanjo", "Jare"], ["Sergio", "Molina"], ["Dani", "Mauro", "Juanma", "Dan"], ["Javi"]]
+    : match.id === "liga-2026-27-aula"
     ? [["Juanjo"], ["Moreno", "Baroffi", "Ortiz"], ["Sergio", "Molina"], ["Dani", "Mauro", "Juanma", "Martin"], ["Javi"]]
     : [["Juanjo"], ["Ortiz", "Sergio", "Jare"], ["Izan", "Molina"], ["Dani", "Mauro", "Rey", "Dan"], ["Javi"]];
   const placedStarters = preferredFormation.flat().map(starterId).filter((playerId): playerId is string => Boolean(playerId));

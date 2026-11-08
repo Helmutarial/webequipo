@@ -80,6 +80,13 @@ async function initializeDatabase() {
     }
     await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('player_photo_recovery_retry_20261104','1')");
   }
+  // Retrato actualizado por petición de Mauro. Se guarda como recurso público del
+  // proyecto para que sobreviva a los redeploys, independientemente del volumen.
+  const mauroPortraitUpdate = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='mauro_portrait_20261108_v1'");
+  if (!mauroPortraitUpdate) {
+    await database.run("UPDATE players SET photo='/player-portraits/mauro-m-20261108.png', updated_at=datetime('now') WHERE id='mauro-m'");
+    await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('mauro_portrait_20261108_v1','1')");
+  }
   await database.exec(`CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE, passwordHash TEXT NOT NULL, name TEXT NOT NULL, playerId TEXT NOT NULL DEFAULT '', role TEXT NOT NULL DEFAULT 'USER', status TEXT NOT NULL DEFAULT 'PENDING', created_at TEXT NOT NULL, updated_at TEXT NOT NULL, approved_at TEXT)`);
   await database.exec(`CREATE TABLE IF NOT EXISTS matches (id TEXT PRIMARY KEY, season TEXT NOT NULL DEFAULT '2026/27', opponent TEXT NOT NULL, opponentShort TEXT NOT NULL, date TEXT NOT NULL, competition TEXT NOT NULL, venue TEXT NOT NULL, status TEXT NOT NULL, isHome INTEGER NOT NULL DEFAULT 1, duration INTEGER NOT NULL DEFAULT 90, homeScore INTEGER, awayScore INTEGER, starters TEXT NOT NULL, substitutes TEXT NOT NULL, events TEXT NOT NULL, updated_at TEXT NOT NULL)`);
   const duplicateCleanup = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='player_duplicate_cleanup_20261026'");
@@ -364,7 +371,7 @@ async function initializeDatabase() {
   if (!manualOfficialResults) {
     // Resultados validados por el club. No provienen de la descarga externa.
     const results = [
-      [1, "A.C.D.M C.A.M.", "ESTRELLA COJA F.C", 1, 2],
+      [1, "A.C.D.M C.A.M.", "ESTRELLA COJA F.C", 0, 3],
       [1, "Asociación Alacrán 1997", "AULA C.F.", 1, 3],
       [1, "E F TEJAR", "ATLETICO JABALIS", 5, 4],
       [1, "Avila FC", "MAKAKOS FC", 2, 2],
@@ -382,6 +389,57 @@ async function initializeDatabase() {
     await database.run("INSERT OR REPLACE INTO official_sync (season,synced_at,source_url) VALUES ('2026/27',datetime('now'),'Resultados registrados manualmente por el club')");
     await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('official_results_manual_2026_27_j1_j2_v1','1')");
   }
+  const estrellaJornadaOneRepair = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='official_result_estrella_j1_20261108_v1'");
+  if (!estrellaJornadaOneRepair) {
+    await database.run(
+      "UPDATE official_matches SET homeScore=0, awayScore=3, status='F' WHERE season='2026/27' AND jornada=1 AND homeTeam='A.C.D.M C.A.M.' AND awayTeam='ESTRELLA COJA F.C'"
+    );
+    await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('official_result_estrella_j1_20261108_v1','1')");
+  }
+  const jabaliesLeagueResult = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='league_result_jabalies_20261108_v1'");
+  if (!jabaliesLeagueResult) {
+    // Resultado registrado por el club: no procede de la sincronización externa.
+    const roster = await database.all<{ id: string; name: string; alias: string }[]>("SELECT id,name,alias FROM players");
+    const playerId = (name: string) => roster.find((player) => player.name.toLocaleLowerCase("es-ES") === name.toLocaleLowerCase("es-ES") || player.alias.toLocaleLowerCase("es-ES") === name.toLocaleLowerCase("es-ES"))?.id || name.toLowerCase();
+    const events = JSON.stringify([
+      { minute: 0, type: "goal", player: playerId("Mauro"), detail: "Aldapan Gora" },
+      { minute: 0, type: "goal", player: playerId("Juanjo"), detail: "Aldapan Gora" },
+      { minute: 55, type: "substitution", player: playerId("Izan"), relatedPlayer: playerId("Sergio") },
+      { minute: 55, type: "substitution", player: playerId("Moreno"), relatedPlayer: playerId("Ortiz") },
+      { minute: 60, type: "substitution", player: playerId("Rey"), relatedPlayer: playerId("Molina") },
+      { minute: 70, type: "substitution", player: playerId("Pedro"), relatedPlayer: playerId("Jare") },
+      { minute: 90, type: "mvp", player: playerId("Mauro") },
+    ]);
+    await database.run("UPDATE matches SET status='finished', homeScore=2, awayScore=0, starters=?, substitutes=?, events=?, updated_at=datetime('now') WHERE id=?", JSON.stringify(["Javi", "Dan", "Juanma", "Mauro", "Dani", "Sergio", "Molina", "Juanjo", "Jare", "Ortiz", "Baroffi"].map(playerId)), JSON.stringify(["Izan", "Moreno", "Rey", "Pedro"].map(playerId)), events, "liga-2026-27-atletico-jabalis");
+    await database.run("UPDATE official_matches SET homeScore=2, awayScore=0, status='F' WHERE season='2026/27' AND jornada=3 AND homeTeam='ALDAPAN GORA FC' AND awayTeam='ATLETICO JABALIS'");
+    await database.run("INSERT OR REPLACE INTO official_sync (season,synced_at,source_url) VALUES ('2026/27',datetime('now'),'Resultados registrados manualmente por el club')");
+    await database.run("INSERT OR REPLACE INTO app_meta (key,value) VALUES ('league_result_jabalies_20261108_v1','1')");
+  }
+  // La clasificación siempre se recompone desde los marcadores registrados por el club.
+  // Así no puede quedarse desfasada ni depender de una descarga externa.
+  await database.run("UPDATE official_matches SET homeScore=3, awayScore=3, status='F' WHERE season='2026/27' AND jornada=1 AND homeTeam='ALDAPAN GORA FC' AND awayTeam='TATO F.C.' AND homeScore IS NULL");
+  const officialResults = await database.all<{ homeTeam: string; awayTeam: string; homeScore: number | null; awayScore: number | null }[]>("SELECT homeTeam,awayTeam,homeScore,awayScore FROM official_matches WHERE season='2026/27'");
+  const table = new Map<string, { team: string; played: number; won: number; drawn: number; lost: number; goalsFor: number; goalsAgainst: number; points: number }>();
+  const addTeam = (team: string) => {
+    if (team !== "** DESCANSA **" && !table.has(team)) table.set(team, { team, played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0 });
+  };
+  for (const match of officialResults) {
+    addTeam(match.homeTeam); addTeam(match.awayTeam);
+    if (match.homeScore == null || match.awayScore == null || match.awayTeam === "** DESCANSA **") continue;
+    const home = table.get(match.homeTeam); const away = table.get(match.awayTeam);
+    if (!home || !away) continue;
+    home.played += 1; away.played += 1;
+    home.goalsFor += match.homeScore; home.goalsAgainst += match.awayScore;
+    away.goalsFor += match.awayScore; away.goalsAgainst += match.homeScore;
+    if (match.homeScore > match.awayScore) { home.won += 1; home.points += 3; away.lost += 1; }
+    else if (match.homeScore < match.awayScore) { away.won += 1; away.points += 3; home.lost += 1; }
+    else { home.drawn += 1; away.drawn += 1; home.points += 1; away.points += 1; }
+  }
+  const recalculatedStandings = [...table.values()].sort((a, b) => b.points - a.points || (b.goalsFor - b.goalsAgainst) - (a.goalsFor - a.goalsAgainst) || b.goalsFor - a.goalsFor || a.team.localeCompare(b.team, "es"));
+  await database.run("DELETE FROM official_standings WHERE season='2026/27'");
+  const insertStanding = await database.prepare("INSERT INTO official_standings (season,position,team,played,won,drawn,lost,goalsFor,goalsAgainst,points) VALUES ('2026/27',?,?,?,?,?,?,?,?,?)");
+  for (const [index, standing] of recalculatedStandings.entries()) await insertStanding.run(index + 1, standing.team, standing.played, standing.won, standing.drawn, standing.lost, standing.goalsFor, standing.goalsAgainst, standing.points);
+  await insertStanding.finalize();
   const privateProfilesImported = await database.get<{ value: string }>("SELECT value FROM app_meta WHERE key='private_player_profiles_import_20261104_v1'");
   if (!privateProfilesImported) {
     const statement = await database.prepare("INSERT OR IGNORE INTO player_private_profiles (player_id,age,height_cm,weight_kg,dominant_foot,natural_position,secondary_positions,updated_at) VALUES (?,?,?,?,?,?,?,datetime('now'))");

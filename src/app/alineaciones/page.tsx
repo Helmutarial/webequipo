@@ -17,9 +17,72 @@ type Analysis = {
 const blank: Analysis = { sections: [], needs: [], opponentGuide: [], profiles: [], teamAssessment: { metrics: [], summary: "", detail: "" } };
 const normalise = (value: Analysis): Analysis => ({ ...value, profiles: (value.profiles || []).map((profile: Note & { rows?: { name?: string; detail?: string; protect?: string }[] }) => ({ ...profile, text: profile.text || (profile.rows || []).map((row) => [row.name, row.detail, row.protect].filter(Boolean).join(" · ")).join("\n\n") })) });
 
+function PhaseDiagram({ phase }: { phase: "attack" | "defense" }) {
+  const attacking = phase === "attack";
+  const players = [
+    ["POR", 310, 252], ["LI", 78, 205], ["DFC", 216, 205], ["DFC", 404, 205], ["LD", 542, 205],
+    ["MCD", attacking ? 300 : 246, attacking ? 168 : 153], ["MC", attacking ? 400 : 374, attacking ? 132 : 153],
+    ["EI", 105, attacking ? 88 : 118], ["MCO", attacking ? 205 : 310, attacking ? 128 : 100], ["ED", 515, attacking ? 88 : 118], ["DC", 310, 34],
+  ] as const;
+  return <div className="formation-reference"><svg className="phase-diagram" viewBox="0 0 620 300" role="img" aria-label={phase === "attack" ? "Estructura FIFA del Aldapan Gora en fase ofensiva" : "Estructura FIFA del Aldapan Gora en fase defensiva de bloque medio"}>
+    <rect className="diagram-pitch" x="12" y="12" width="596" height="276" rx="10" />
+    <path className="diagram-line" d="M12 150H608M238 12V58H382V12M238 288V242H382V288M310 105a45 45 0 1 0 0 90a45 45 0 1 0 0-90" />
+    {players.map(([label, x, y]) => <g className={`diagram-player ${label === "MCD" || label === "MC" ? "diagram-pivot" : ""}`} key={label + x}><circle cx={x} cy={y} r="22" /><text x={x} y={y + 4}>{label}</text></g>)}
+  </svg></div>;
+}
+
+function BuildUpDiagram() {
+  return <figure className="build-up-diagram">
+    <svg viewBox="0 0 620 300" role="img" aria-label="Salida de balón: conexiones entre DFC, LD o LI, MCD y MC">
+      <defs><marker id="diagram-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path fill="#b49a6a" d="M 0 0 L 10 5 L 0 10 z" /></marker></defs>
+      <rect className="diagram-pitch" x="12" y="12" width="596" height="276" rx="10" />
+      <path className="diagram-line" d="M12 12H608M238 288V242H382V288" />
+      <path className="diagram-route" d="M157 212L99 180" markerStart="url(#diagram-arrow)" markerEnd="url(#diagram-arrow)" />
+      <path className="diagram-route" d="M100 165L240 147" markerStart="url(#diagram-arrow)" markerEnd="url(#diagram-arrow)" />
+      <path className="diagram-route" d="M245 162L194 207" markerStart="url(#diagram-arrow)" markerEnd="url(#diagram-arrow)" />
+      <path className="diagram-route" d="M91 148L145 88" markerEnd="url(#diagram-arrow)" />
+      <path className="diagram-route" d="M241 129L180 85" markerEnd="url(#diagram-arrow)" />
+      <g className="diagram-player"><circle cx="178" cy="224" r="24" /><text x="178" y="230">DFC</text></g>
+      <g className="diagram-player"><circle cx="78" cy="168" r="24" /><text x="78" y="174">LI</text></g>
+      <g className="diagram-player diagram-pivot"><circle cx="262" cy="145" r="24" /><text x="262" y="151">MCD</text></g>
+      <g className="diagram-player"><circle cx="160" cy="68" r="24" /><text x="160" y="74">MC</text></g>
+    </svg>
+    <figcaption>Conexiones para dar salida al balón.</figcaption>
+  </figure>;
+}
+
+function GamePlan() {
+  return <section className="game-plan" aria-labelledby="game-plan-title">
+    <div className="game-plan-intro">
+      <span className="section-label">MODELO DE JUEGO</span>
+      <h2 id="game-plan-title">Plan de juego</h2>
+      <p>Dos fotografías iniciales de la estructura del equipo. Esta primera versión sirve como base para concretar movimientos, responsabilidades y ajustes por rival.</p>
+    </div>
+    <div className="game-plan-formations">
+      <article>
+        <div className="game-plan-card-heading"><span>Modelo base</span><h3>Fase ofensiva</h3></div>
+        <PhaseDiagram phase="attack" />
+      </article>
+      <article>
+        <div className="game-plan-card-heading"><span>Bloque medio</span><h3>Fase defensiva</h3></div>
+        <PhaseDiagram phase="defense" />
+      </article>
+    </div>
+    <section className="game-plan-principles" aria-labelledby="game-plan-principles-title">
+      <div><h3 id="game-plan-principles-title">Ideas básicas</h3></div>
+      <div className="game-plan-principles-grid">
+        <article><h4>Salida de balón</h4><p>DFC, LD/LI y MCD forman triángulos para dar salida al balón. El MCD intenta mantener su posición delante de los centrales y dar continuidad a la jugada. El MC tiene más libertad para moverse y recibir. Los LD/LI no suben hasta que el balón llega al medio campo.</p><BuildUpDiagram /></article>
+        <article><h4>Si hay ventaja, vamos</h4><p>Al recuperar, necesitamos una opción cercana y otra que ataque el espacio. Solo aceleramos si el pase hacia delante es claro; si no, conservamos el balón y volvemos a organizar el ataque.</p></article>
+        <article><h4>Juntos por dentro</h4><p>Sin balón, los extremos bajan hasta la altura de los pivotes para cerrar el centro. El 10 vigila a su mediocentro. Si un defensor sale, un compañero cubre su espalda.</p></article>
+        <article><h4>Primero balón, luego rechace</h4><p>Antes de cada córner o falta lateral se decide quién manda, quién va al primer balón y quién queda para la segunda jugada. Tras un cambio, esas tareas se reparten de nuevo.</p></article>
+      </div>
+    </section>
+  </section>;
+}
+
 export default function BoardPage() {
   const { session } = useAuth();
-  const [tab, setTab] = useState<"analysis" | "lineup">("analysis");
+  const [tab, setTab] = useState<"analysis" | "lineup" | "gameplan">("analysis");
   const [plantillaTab, setPlantillaTab] = useState<"vision" | "assessment" | "roles" | "plan" | "rivals">("vision");
   const [analysis, setAnalysis] = useState<Analysis>(blank);
   const [loading, setLoading] = useState(true);
@@ -47,8 +110,8 @@ export default function BoardPage() {
 
   return <main className="content-page shell pizarra-page">
     <div className="page-intro"><div><span className="section-label">JUNTA · TEMPORADA 2026/27</span><h1>Pizarra<em>.</em></h1><p>Planificación de plantilla, lectura de rivales y alineaciones.</p></div></div>
-    <div className="pizarra-tabs"><button className={tab === "analysis" ? "active" : ""} onClick={() => setTab("analysis")}>Plantilla</button><button className={tab === "lineup" ? "active" : ""} onClick={() => setTab("lineup")}>Alineaciones</button></div>
-    {tab === "lineup" ? <div className="pizarra-builder"><AlignmentBuilder /></div> : !isAdmin ? <section className="pizarra-private"><span className="section-label">CONTENIDO PRIVADO</span><h2>Análisis de plantilla</h2><p>Inicia sesión como miembro de la Junta para consultar y actualizar esta pizarra.</p></section> : loading ? <p className="pizarra-loading">Cargando pizarra…</p> : <section className="squad-analysis">
+    <div className="pizarra-tabs"><button className={tab === "analysis" ? "active" : ""} onClick={() => setTab("analysis")}>Plantilla</button><button className={tab === "lineup" ? "active" : ""} onClick={() => setTab("lineup")}>Alineaciones</button><button className={tab === "gameplan" ? "active" : ""} onClick={() => setTab("gameplan")}>Plan de juego</button></div>
+    {tab === "lineup" ? <div className="pizarra-builder"><AlignmentBuilder /></div> : !isAdmin ? <section className="pizarra-private"><span className="section-label">CONTENIDO PRIVADO</span><h2>{tab === "gameplan" ? "Plan de juego" : "Análisis de plantilla"}</h2><p>Inicia sesión como miembro de la Junta para consultar y actualizar esta pizarra.</p></section> : tab === "gameplan" ? <GamePlan /> : loading ? <p className="pizarra-loading">Cargando pizarra…</p> : <section className="squad-analysis">
       <div className="squad-analysis-head"><div><span className="section-label">ANÁLISIS INTERNO</span><h2>Radiografía de la plantilla</h2></div><button className="admin-save-button" disabled={saving} onClick={save}>{saving ? "Guardando…" : "Guardar cambios"}</button></div>{message && <p className="pizarra-message">{message}</p>}
       <div className="plantilla-tabs"><button className={plantillaTab === "vision" ? "active" : ""} onClick={() => setPlantillaTab("vision")}>Visión general</button><button className={plantillaTab === "assessment" ? "active" : ""} onClick={() => setPlantillaTab("assessment")}>Valoración equipo</button><button className={plantillaTab === "roles" ? "active" : ""} onClick={() => setPlantillaTab("roles")}>Roles y perfiles</button><button className={plantillaTab === "plan" ? "active" : ""} onClick={() => setPlantillaTab("plan")}>Plan de trabajo</button><button className={plantillaTab === "rivals" ? "active" : ""} onClick={() => setPlantillaTab("rivals")}>Rivales</button></div>
       {plantillaTab === "vision" && <div className="squad-analysis-stack">{visionSections.map((item) => { const index = sections.indexOf(item); return <article key={item.title}><h3>{item.title}</h3><textarea value={item.text} onChange={(event) => update("sections", sections.map((section, position) => position === index ? { ...section, text: event.target.value } : section))} /></article>; })}</div>}
